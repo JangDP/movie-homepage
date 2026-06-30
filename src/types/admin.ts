@@ -21,3 +21,10 @@ export function canManageAdmins(role: AdminRole) {
   return role === "super_admin";
 }
 
+export function canManageNavigation(role: AdminRole) {
+  return role === "super_admin" || role === "admin";
+}
+
+export function canDeleteComments(role: AdminRole) {
+  return role === "super_admin" || role === "admin";
+}

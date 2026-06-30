@@ -357,10 +357,10 @@ export function PostEditor() {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <main className="min-w-0">
-          <section className="mx-auto max-w-4xl rounded-lg border border-zinc-800 bg-zinc-200 p-3 shadow-2xl shadow-black/40 md:p-6">
-            <div className="min-h-[760px] rounded bg-white px-5 py-8 text-zinc-950 shadow-sm md:px-12 md:py-10">
+          <section className="mx-auto max-w-6xl rounded-lg border border-zinc-800 bg-zinc-200 p-3 shadow-2xl shadow-black/40 md:p-6">
+            <div className="min-h-[920px] rounded bg-white px-5 py-8 text-zinc-950 shadow-sm md:px-14 md:py-12 xl:px-20">
               <input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
@@ -374,7 +374,7 @@ export function PostEditor() {
                   <article
                     key={block.id}
                     onClick={() => setActiveBlockId(block.id)}
-                    className={`group relative rounded-lg border p-3 transition ${
+                    className={`group relative rounded-lg border p-4 transition md:p-5 ${
                       activeBlockId === block.id ? "border-red-300 bg-red-50/50" : "border-transparent hover:border-zinc-200"
                     }`}
                   >
@@ -516,8 +516,8 @@ function EditableBlock({
         value={block.content}
         onChange={(event) => updateBlock(block.id, { content: event.target.value } as Partial<WysiwygBlock>)}
         placeholder="본문을 입력하세요"
-        rows={3}
-      className={`w-full resize-none border-0 bg-transparent text-base leading-8 text-zinc-900 outline-none placeholder:text-zinc-300 ${editorTextAlignClass[block.align]}`}
+        rows={6}
+        className={`min-h-[180px] w-full resize-y border-0 bg-transparent text-base leading-8 text-zinc-900 outline-none placeholder:text-zinc-300 ${editorTextAlignClass[block.align]}`}
       />
     );
   }
@@ -547,8 +547,8 @@ function EditableBlock({
       <textarea
         value={block.content}
         onChange={(event) => updateBlock(block.id, { content: event.target.value } as Partial<WysiwygBlock>)}
-        rows={3}
-        className={`w-full resize-none border-l-4 border-red-600 bg-zinc-50 px-4 py-3 text-lg font-semibold leading-8 text-zinc-800 outline-none ${editorTextAlignClass[block.align]}`}
+        rows={5}
+        className={`min-h-[160px] w-full resize-y border-l-4 border-red-600 bg-zinc-50 px-4 py-3 text-lg font-semibold leading-8 text-zinc-800 outline-none ${editorTextAlignClass[block.align]}`}
       />
     );
   }
@@ -562,7 +562,7 @@ function EditableBlock({
             {block.caption ? <figcaption className="mt-2 text-center text-sm text-zinc-500">{block.caption}</figcaption> : null}
           </figure>
         ) : (
-          <button type="button" onClick={openMedia} className="min-h-[180px] rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-sm font-bold text-zinc-500 hover:border-red-500 hover:text-red-600">
+          <button type="button" onClick={openMedia} className="min-h-[300px] rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-sm font-bold text-zinc-500 hover:border-red-500 hover:text-red-600">
             미디어 라이브러리에서 이미지 선택
           </button>
         )}
@@ -599,7 +599,7 @@ function EditableBlock({
     return (
       <div className="grid gap-3">
         <input value={block.url} onChange={(event) => updateBlock(block.id, { url: event.target.value } as Partial<WysiwygBlock>)} placeholder="YouTube URL" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
-        {id ? <iframe src={`https://www.youtube.com/embed/${id}`} title="YouTube preview" className="aspect-video w-full rounded-lg border border-zinc-200" /> : <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center text-sm font-bold text-zinc-500">유튜브 주소를 입력하면 미리보기가 표시됩니다.</div>}
+        {id ? <iframe src={`https://www.youtube.com/embed/${id}`} title="YouTube preview" className="aspect-video min-h-[320px] w-full rounded-lg border border-zinc-200" /> : <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-12 text-center text-sm font-bold text-zinc-500">유튜브 주소를 입력하면 미리보기가 표시됩니다.</div>}
         <input value={block.caption} onChange={(event) => updateBlock(block.id, { caption: event.target.value } as Partial<WysiwygBlock>)} placeholder="영상 캡션" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
       </div>
     );
@@ -614,8 +614,8 @@ function EditableBlock({
       <textarea
         value={block.rows.map((row) => row.join(" | ")).join("\n")}
         onChange={(event) => updateBlock(block.id, { rows: event.target.value.split("\n").map((row) => row.split("|").map((cell) => cell.trim())) } as Partial<WysiwygBlock>)}
-        rows={4}
-        className="w-full rounded border border-zinc-300 bg-white px-3 py-2 font-mono text-sm"
+        rows={8}
+        className="min-h-[240px] w-full rounded border border-zinc-300 bg-white px-3 py-2 font-mono text-sm"
       />
     );
   }

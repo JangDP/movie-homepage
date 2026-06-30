@@ -16,7 +16,7 @@ type AdminNavItem = {
 const adminNav: AdminNavItem[] = [
   { label: "대시보드", href: "/admin" },
   {
-    label: "글 관리",
+    label: "글",
     href: "/admin/posts",
     children: [
       { label: "모든 글", href: "/admin/posts" },
@@ -25,6 +25,7 @@ const adminNav: AdminNavItem[] = [
     ],
   },
   { label: "카테고리", href: "/admin/categories" },
+  { label: "댓글", href: "/admin/comments" },
   { label: "태그", href: "/admin/tags" },
   { label: "미디어", href: "/admin/media" },
   {
@@ -55,22 +56,18 @@ export function AdminShell({ title, description, children }: AdminShellProps) {
     <AdminAuthGate>
       <main className="min-h-screen bg-zinc-950 pt-16 text-zinc-100">
         <div className="border-b border-zinc-800 bg-black/70">
-          <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+          <div className="mx-auto flex max-w-[1560px] flex-col gap-5 px-4 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
             <div>
               <Link href="/" className="text-sm font-bold text-red-500">
                 {siteConfig.appearance.logoText}
               </Link>
-              <h1 className="mt-2 text-2xl font-black text-white sm:text-3xl">
-                {title}
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-                {description}
-              </p>
+              <h1 className="mt-2 text-2xl font-black text-white sm:text-3xl">{title}</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">{description}</p>
             </div>
             <AdminSessionStatus />
           </div>
         </div>
-        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[260px_1fr] lg:px-8">
+        <div className="mx-auto grid max-w-[1560px] gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:px-8">
           <aside className="h-fit rounded-lg border border-zinc-800 bg-black/50 p-3">
             <nav className="grid gap-2" aria-label="관리자 메뉴">
               {adminNav.map((item) => (

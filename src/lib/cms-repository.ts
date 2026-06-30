@@ -242,6 +242,7 @@ export async function getComments(postId: string): Promise<Comment[]> {
     .select("*")
     .eq("post_id", postId)
     .eq("status", "approved")
+    .eq("is_deleted", false)
     .order("created_at", { ascending: false });
 
   if (error) {

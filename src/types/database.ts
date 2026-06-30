@@ -47,6 +47,7 @@ export type Database = {
           post_id: string;
           author_name: string;
           body: string;
+          is_deleted: boolean | null;
           status: "pending" | "approved" | "hidden";
           created_at: string;
         };
@@ -54,6 +55,7 @@ export type Database = {
           post_id: string;
           author_name: string;
           body: string;
+          is_deleted?: boolean;
           status?: "pending" | "approved" | "hidden";
         };
         Update: Partial<Database["public"]["Tables"]["comments"]["Row"]>;

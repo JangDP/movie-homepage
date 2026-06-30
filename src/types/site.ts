@@ -3,6 +3,7 @@ export type NavItem = {
   label: string;
   href: string;
   order?: number;
+  active?: boolean;
 };
 
 export type Category = {
