@@ -5,32 +5,22 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { siteConfig } from "@/data/site-config";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseDebugInfo, supabase } from "@/lib/supabase";
 
 type LoginState = {
   type: "idle" | "error" | "success";
   message: string;
 };
 
-function getSupabaseHost() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-
-  if (!url) {
-    return "설정 없음";
-  }
-
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
-}
-
 function getLoginErrorMessage(message: string, email: string) {
   const lowerMessage = message.toLowerCase();
 
   if (lowerMessage.includes("invalid login credentials")) {
     return `로그인 실패: Supabase Auth에서 ${email} 계정의 이메일 또는 비밀번호가 일치하지 않는다고 응답했습니다.`;
+  }
+
+  if (lowerMessage.includes("invalid path specified")) {
+    return `로그인 실패: Supabase Auth 요청 URL이 잘못되었습니다. 브라우저 콘솔의 [Supabase Auth request] URL을 확인하세요. 원문: ${message}`;
   }
 
   if (lowerMessage.includes("email not confirmed")) {
@@ -45,7 +35,7 @@ export function AdminLoginForm() {
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next") || "/admin";
   const isReady = useMemo(() => Boolean(supabase), []);
-  const supabaseHost = useMemo(() => getSupabaseHost(), []);
+  const supabaseDebug = useMemo(() => getSupabaseDebugInfo(), []);
   const fieldId = useMemo(() => Math.random().toString(36).slice(2), []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -82,12 +72,23 @@ export function AdminLoginForm() {
       return;
     }
 
+    console.log("[Admin login submit]", {
+      email: normalizedEmail,
+      supabase: supabaseDebug,
+    });
+
     setPending(true);
     setState({ type: "idle", message: "" });
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: normalizedEmail,
       password,
+    });
+
+    console.log("[Admin login result]", {
+      hasSession: Boolean(data.session),
+      userEmail: data.user?.email,
+      error,
     });
 
     setPending(false);
@@ -117,10 +118,16 @@ export function AdminLoginForm() {
             <p className="mt-2 text-sm leading-6 text-zinc-500">
               Supabase Auth 관리자 계정으로 로그인하면 미디어 업로드와 콘텐츠 관리를 사용할 수 있습니다.
             </p>
-            <p className="mt-3 rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-500">
-              연결된 Supabase 프로젝트:{" "}
-              <span className="font-bold text-zinc-300">{supabaseHost}</span>
-            </p>
+            <div className="mt-3 space-y-1 rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-500">
+              <p>
+                연결된 Supabase 프로젝트:{" "}
+                <span className="font-bold text-zinc-300">{supabaseDebug.host}</span>
+              </p>
+              <p className="break-all">
+                Auth 요청 예상 URL:{" "}
+                <span className="font-bold text-zinc-300">{supabaseDebug.authTokenUrl}</span>
+              </p>
+            </div>
           </div>
 
           <form onSubmit={login} autoComplete="off" className="mt-6 grid gap-4">
