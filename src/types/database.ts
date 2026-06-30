@@ -1,0 +1,133 @@
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+
+export type Database = {
+  public: {
+    Tables: {
+      posts: {
+        Row: {
+          id: string;
+          slug: string;
+          title: string;
+          excerpt: string | null;
+          body: string | null;
+          category_id: string;
+          author: string | null;
+          published_at: string | null;
+          read_time: string | null;
+          thumbnail_url: string | null;
+          image_alt: string | null;
+          tags: string[] | null;
+          status: "draft" | "published" | "deleted";
+          featured: boolean | null;
+          view_count: number | null;
+          seo_title: string | null;
+          meta_description: string | null;
+          og_image_url: string | null;
+          created_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["posts"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["posts"]["Row"]>;
+      };
+      categories: {
+        Row: {
+          id: string;
+          label: string;
+          href: string;
+          description: string | null;
+          sort_order: number | null;
+          visible: boolean | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["categories"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["categories"]["Row"]>;
+      };
+      comments: {
+        Row: {
+          id: string;
+          post_id: string;
+          author_name: string;
+          body: string;
+          status: "pending" | "approved" | "hidden";
+          created_at: string;
+        };
+        Insert: {
+          post_id: string;
+          author_name: string;
+          body: string;
+          status?: "pending" | "approved" | "hidden";
+        };
+        Update: Partial<Database["public"]["Tables"]["comments"]["Row"]>;
+      };
+      post_reactions: {
+        Row: {
+          id: string;
+          post_id: string;
+          post_slug: string;
+          reaction_type: "like" | "watched" | "excited" | "dislike";
+          client_id: string;
+          visitor_id: string;
+          created_at: string;
+        };
+        Insert: {
+          post_id: string;
+          post_slug: string;
+          reaction_type: "like" | "watched" | "excited" | "dislike";
+          client_id: string;
+          visitor_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["post_reactions"]["Row"]>;
+      };
+      page_views: {
+        Row: {
+          id: string;
+          post_id: string | null;
+          post_slug: string;
+          visitor_id: string;
+          viewed_at: string;
+          created_at: string;
+        };
+        Insert: {
+          post_id?: string | null;
+          post_slug: string;
+          visitor_id: string;
+          viewed_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["page_views"]["Row"]>;
+      };
+      media_assets: {
+        Row: {
+          id: string;
+          title: string;
+          url: string;
+          alt: string | null;
+          type: "image";
+          usage: string[] | null;
+          storage_path: string | null;
+          file_size: number | null;
+          mime_type: string | null;
+          created_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["media_assets"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["media_assets"]["Row"]>;
+      };
+      site_settings: {
+        Row: {
+          id: string;
+          key: string;
+          value: Json;
+          updated_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["site_settings"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["site_settings"]["Row"]>;
+      };
+    };
+    Functions: {
+      increment_post_view: {
+        Args: { target_post_id: string };
+        Returns: number;
+      };
+    };
+    Views: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
