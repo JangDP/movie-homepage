@@ -10,6 +10,7 @@ export type Database = {
           title: string;
           excerpt: string | null;
           body: string | null;
+          content_blocks: Json | null;
           category_id: string;
           author: string | null;
           published_at: string | null;

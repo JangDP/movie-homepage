@@ -48,6 +48,15 @@ function ArticleImage({ block }: { block: ArticleImageBlock }) {
 }
 
 export function ArticleBody({ content }: ArticleBodyProps) {
+  if (content.includes('data-cinescope-content="true"')) {
+    return (
+      <div
+        className="text-base leading-8 text-zinc-300"
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
+    );
+  }
+
   const tokens = tokenizeArticleContent(content);
 
   return (
