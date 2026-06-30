@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { AdPlaceholder } from "@/components/AdPlaceholder";
 import { ArticleGrid } from "@/components/ArticleGrid";
+import { ArticleBody } from "@/components/ArticleBody";
 import { CommentsSection } from "@/components/CommentsSection";
 import { PostReactions } from "@/components/PostReactions";
 import { PostViewCounter } from "@/components/PostViewCounter";
@@ -143,8 +144,8 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
               ))}
             </div>
 
-            <div className="rounded-lg border border-zinc-800 bg-black/50 p-5 text-base leading-8 text-zinc-300 sm:p-8">
-              <p>{post.body}</p>
+            <div className="rounded-lg border border-zinc-800 bg-black/50 p-5 sm:p-8">
+              <ArticleBody content={post.body} />
               <AdPlaceholder label="Article middle AdSense slot" className="my-8" />
             </div>
 
