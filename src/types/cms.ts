@@ -27,6 +27,25 @@ export type CmsMediaAsset = {
   createdAt: string;
 };
 
+export type MediaFile = {
+  id: string;
+  title: string;
+  alt: string;
+  originalUrl: string;
+  webpUrl: string;
+  thumbnailUrl: string;
+  originalPath: string;
+  webpPath: string;
+  thumbnailPath: string;
+  mimeType: string;
+  sizeBytes: number;
+  width?: number | null;
+  height?: number | null;
+  uploadedBy?: string | null;
+  createdAt: string;
+  usedInCount?: number;
+};
+
 export type CmsTheme = {
   id: string;
   name: string;

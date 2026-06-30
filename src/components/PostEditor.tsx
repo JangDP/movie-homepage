@@ -5,25 +5,15 @@ import { FormEvent, useMemo, useRef, useState } from "react";
 import { AdminSelect } from "@/components/AdminSelect";
 import { MediaPicker } from "@/components/MediaPicker";
 import { editorBlocks } from "@/data/editor-blocks";
-import { mediaAssets } from "@/data/media";
 import { siteConfig } from "@/data/site-config";
 import { supabase } from "@/lib/supabase";
-import type { CmsMediaAsset } from "@/types/cms";
+import type { MediaFile } from "@/types/cms";
 
 type SaveMode = "draft" | "published";
 
 type SaveState = {
   type: "idle" | "success" | "error";
   message: string;
-};
-
-const text = {
-  titleRequired: "\uC81C\uBAA9\uC740 \uD544\uC218\uC785\uB2C8\uB2E4. \uC81C\uBAA9\uB9CC \uC785\uB825\uD574\uB3C4 \uC784\uC2DC \uC800\uC7A5\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
-  publishRequired: "\uBC1C\uD589\uD558\uB824\uBA74 \uC81C\uBAA9, slug, \uCE74\uD14C\uACE0\uB9AC, \uBCF8\uBB38\uC744 \uBAA8\uB450 \uC785\uB825\uD574\uC57C \uD569\uB2C8\uB2E4.",
-  missingSupabase: "Supabase \uD658\uACBD\uBCC0\uC218\uAC00 \uC5C6\uC5B4 \uC800\uC7A5\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. .env.local\uC744 \uD655\uC778\uD558\uC138\uC694.",
-  draftDone: "\uC784\uC2DC \uC800\uC7A5 \uC644\uB8CC",
-  publishDone: "\uBC1C\uD589 \uC644\uB8CC",
-  savingFailed: "\uC800\uC7A5 \uC2E4\uD328",
 };
 
 function slugify(value: string) {
@@ -43,34 +33,36 @@ function getValue(formData: FormData, key: string) {
 }
 
 export function PostEditor() {
-  const defaultImage = mediaAssets[0];
   const defaultCategory = siteConfig.categories[0]?.id ?? "news";
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
-  const [selectedImage, setSelectedImage] = useState<CmsMediaAsset | undefined>(defaultImage);
-  const [pickerTarget, setPickerTarget] = useState<"thumbnail" | "body" | null>(null);
+  const [featuredImage, setFeaturedImage] = useState<MediaFile | null>(null);
+  const [pickerTarget, setPickerTarget] = useState<"featured" | "body" | null>(null);
   const [pendingMode, setPendingMode] = useState<SaveMode | null>(null);
   const [saveState, setSaveState] = useState<SaveState>({ type: "idle", message: "" });
   const isSupabaseReady = useMemo(() => Boolean(supabase), []);
 
-  function selectMedia(asset: CmsMediaAsset) {
-    if (pickerTarget === "body") {
-      const textarea = bodyRef.current;
-      const imageMarkdown = `\n\n![${asset.alt}](${asset.url})\n\n`;
+  function insertAtCursor(value: string) {
+    const textarea = bodyRef.current;
 
-      if (textarea) {
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        textarea.value =
-          textarea.value.slice(0, start) + imageMarkdown + textarea.value.slice(end);
-        textarea.focus();
-        textarea.selectionStart = start + imageMarkdown.length;
-        textarea.selectionEnd = start + imageMarkdown.length;
-      }
-
+    if (!textarea) {
       return;
     }
 
-    setSelectedImage(asset);
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    textarea.value = textarea.value.slice(0, start) + value + textarea.value.slice(end);
+    textarea.focus();
+    textarea.selectionStart = start + value.length;
+    textarea.selectionEnd = start + value.length;
+  }
+
+  function selectMedia(asset: MediaFile) {
+    if (pickerTarget === "body") {
+      insertAtCursor(`\n\n![${asset.alt}](${asset.webpUrl})\n\n`);
+      return;
+    }
+
+    setFeaturedImage(asset);
   }
 
   async function savePost(event: FormEvent<HTMLFormElement>, mode: SaveMode) {
@@ -78,7 +70,10 @@ export function PostEditor() {
     setSaveState({ type: "idle", message: "" });
 
     if (!supabase) {
-      setSaveState({ type: "error", message: text.missingSupabase });
+      setSaveState({
+        type: "error",
+        message: "Supabase 환경변수가 없어 저장할 수 없습니다.",
+      });
       return;
     }
 
@@ -89,8 +84,8 @@ export function PostEditor() {
     const category = getValue(formData, "category") || defaultCategory;
     const body = getValue(formData, "body");
     const excerpt = getValue(formData, "excerpt");
-    const author = getValue(formData, "author") || "\uD3B8\uC9D1\uBD80";
-    const readTime = getValue(formData, "readTime") || "3\uBD84";
+    const author = getValue(formData, "author") || "편집부";
+    const readTime = getValue(formData, "readTime") || "3분";
     const seoTitle = getValue(formData, "seoTitle");
     const metaDescription = getValue(formData, "metaDescription");
     const tags = getValue(formData, "tags")
@@ -101,16 +96,24 @@ export function PostEditor() {
     const slug = mode === "draft" ? inputSlug || slugify(title) : inputSlug;
 
     if (!title) {
-      setSaveState({ type: "error", message: text.titleRequired });
+      setSaveState({
+        type: "error",
+        message: "제목은 필수입니다. 제목만 입력해도 임시 저장할 수 있습니다.",
+      });
       return;
     }
 
     if (mode === "published" && (!slug || !category || !body)) {
-      setSaveState({ type: "error", message: text.publishRequired });
+      setSaveState({
+        type: "error",
+        message: "발행하려면 제목, slug, 카테고리, 본문을 모두 입력해야 합니다.",
+      });
       return;
     }
 
     setPendingMode(mode);
+
+    const imageUrl = featuredImage?.webpUrl ?? null;
 
     const { error } = await supabase.from("posts").insert({
       title,
@@ -121,25 +124,26 @@ export function PostEditor() {
       author,
       published_at: publishedAt,
       read_time: readTime,
-      thumbnail_url: selectedImage?.url ?? null,
-      image_alt: selectedImage?.alt ?? title,
+      thumbnail_url: imageUrl,
+      image_alt: featuredImage?.alt ?? title,
       tags,
       status: mode,
       featured: formData.get("featured") === "on",
       seo_title: seoTitle || title,
       meta_description: metaDescription || excerpt || body.slice(0, 140),
-      og_image_url: selectedImage?.url ?? null,
+      og_image_url: imageUrl,
     });
 
     setPendingMode(null);
 
     if (error) {
-      setSaveState({ type: "error", message: `${text.savingFailed}: ${error.message}` });
+      setSaveState({ type: "error", message: `저장 실패: ${error.message}` });
       return;
     }
 
-    setSaveState({ type: "success", message: mode === "published" ? text.publishDone : text.draftDone });
+    setSaveState({ type: "success", message: mode === "published" ? "발행 완료" : "임시 저장 완료" });
     form.reset();
+    setFeaturedImage(null);
   }
 
   return (
@@ -174,22 +178,6 @@ export function PostEditor() {
                 태그
                 <input name="tags" placeholder="리뷰, 누아르, OTT" className="mt-2 w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-red-700" />
               </label>
-              <div className="rounded border border-zinc-800 bg-zinc-950 p-4">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-bold text-white">썸네일 이미지</p>
-                    <p className="mt-1 text-xs text-zinc-500">{selectedImage?.title ?? "선택된 이미지 없음"}</p>
-                    <input type="hidden" name="thumbnailMediaId" value={selectedImage?.id ?? ""} readOnly />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setPickerTarget("thumbnail")}
-                    className="rounded border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-200 hover:border-red-700"
-                  >
-                    미디어에서 선택
-                  </button>
-                </div>
-              </div>
               <label className="block text-sm font-semibold text-zinc-300">
                 요약 설명
                 <textarea name="excerpt" rows={3} placeholder="목록과 SEO에 표시할 짧은 설명" className="mt-2 w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-red-700" />
@@ -200,30 +188,29 @@ export function PostEditor() {
           <section className="rounded-lg border border-zinc-800 bg-black/45 p-5">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div>
-                <h2 className="text-lg font-bold text-white">블록 편집기</h2>
-                <p className="mt-1 text-sm text-zinc-500">블록을 추가하고 본문을 작성합니다.</p>
+                <h2 className="text-lg font-bold text-white">본문 편집기</h2>
+                <p className="mt-1 text-sm text-zinc-500">이미지 삽입 버튼으로 원하는 위치에 이미지를 넣을 수 있습니다.</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {editorBlocks.map((block) => (
-                  <button
-                    key={block.id}
-                    type="button"
-                    title={block.description}
-                    onClick={() => {
-                      if (block.type === "image") {
-                        setPickerTarget("body");
-                      }
-                    }}
-                    className="min-h-9 rounded border border-zinc-700 px-3 text-xs font-bold text-zinc-200 transition hover:border-red-700 hover:bg-red-700 hover:text-white"
-                  >
-                    + {block.label}
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  onClick={() => setPickerTarget("body")}
+                  className="min-h-9 rounded bg-red-700 px-3 text-xs font-bold text-white transition hover:bg-red-600"
+                >
+                  이미지 삽입
+                </button>
+                {editorBlocks
+                  .filter((block) => block.type !== "image")
+                  .map((block) => (
+                    <button key={block.id} type="button" title={block.description} className="min-h-9 rounded border border-zinc-700 px-3 text-xs font-bold text-zinc-200 transition hover:border-red-700 hover:bg-red-700 hover:text-white">
+                      + {block.label}
+                    </button>
+                  ))}
               </div>
             </div>
             <div className="mt-5 rounded-lg border border-zinc-800 bg-zinc-950 p-4">
-              <span className="text-xs font-bold text-red-500">문단 블록</span>
-              <textarea ref={bodyRef} name="body" rows={10} placeholder="본문을 입력하세요. 발행하려면 본문이 필요합니다." className="mt-3 w-full rounded border border-zinc-800 bg-black px-4 py-3 text-sm leading-7 text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-red-700" />
+              <span className="text-xs font-bold text-red-500">본문</span>
+              <textarea ref={bodyRef} name="body" rows={12} placeholder="본문을 입력하세요. 발행하려면 본문이 필요합니다." className="mt-3 w-full rounded border border-zinc-800 bg-black px-4 py-3 text-sm leading-7 text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-red-700" />
             </div>
           </section>
 
@@ -245,9 +232,25 @@ export function PostEditor() {
         <aside className="h-fit rounded-lg border border-zinc-800 bg-zinc-950 p-4">
           <h2 className="text-sm font-bold text-white">발행 설정</h2>
           <div className="mt-4 grid gap-4">
+            <div className="rounded border border-zinc-800 bg-black p-3">
+              <p className="text-sm font-bold text-white">대표 이미지</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                {featuredImage?.title ?? "선택된 이미지 없음"}
+              </p>
+              {featuredImage ? (
+                <img src={featuredImage.thumbnailUrl} alt={featuredImage.alt} className="mt-3 aspect-video w-full rounded object-cover" />
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setPickerTarget("featured")}
+                className="mt-3 w-full rounded border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-200 hover:border-red-700"
+              >
+                대표 이미지 선택
+              </button>
+            </div>
             <label className="block text-sm font-semibold text-zinc-300">
               작성자
-              <input name="author" defaultValue="\uD3B8\uC9D1\uBD80" className="mt-2 w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-red-700" />
+              <input name="author" defaultValue="편집부" className="mt-2 w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-red-700" />
             </label>
             <label className="block text-sm font-semibold text-zinc-300">
               발행일
@@ -281,7 +284,7 @@ export function PostEditor() {
       ) : null}
       <MediaPicker
         open={pickerTarget !== null}
-        title={pickerTarget === "body" ? "본문 이미지 선택" : "썸네일 이미지 선택"}
+        title={pickerTarget === "body" ? "본문 이미지 선택" : "대표 이미지 선택"}
         onClose={() => setPickerTarget(null)}
         onSelect={selectMedia}
       />

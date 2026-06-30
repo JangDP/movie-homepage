@@ -6,9 +6,8 @@ import { useState } from "react";
 import { AdminCard } from "@/components/AdminCard";
 import { AdminField } from "@/components/AdminField";
 import { MediaPicker } from "@/components/MediaPicker";
-import { mediaAssets } from "@/data/media";
 import { siteConfig } from "@/data/site-config";
-import type { CmsMediaAsset } from "@/types/cms";
+import type { MediaFile } from "@/types/cms";
 
 const bannerSlides = [
   { id: "slide-1", title: "이번 주 추천 영화", active: true, order: 1 },
@@ -18,7 +17,7 @@ const bannerSlides = [
 
 export function AdminBannerEditor() {
   const { hero } = siteConfig;
-  const [selectedMedia, setSelectedMedia] = useState<CmsMediaAsset | undefined>(mediaAssets[0]);
+  const [selectedMedia, setSelectedMedia] = useState<MediaFile | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -37,23 +36,31 @@ export function AdminBannerEditor() {
               <div className="relative aspect-[16/10] overflow-hidden rounded bg-zinc-900">
                 {selectedMedia ? (
                   <Image
-                    src={selectedMedia.url}
+                    src={selectedMedia.thumbnailUrl || selectedMedia.webpUrl}
                     alt={selectedMedia.alt}
                     fill
                     sizes="220px"
                     className="object-cover"
                   />
-                ) : null}
+                ) : (
+                  <Image
+                    src={hero.image}
+                    alt={hero.imageAlt}
+                    fill
+                    sizes="220px"
+                    className="object-cover"
+                  />
+                )}
               </div>
               <div>
                 <p className="text-sm font-bold text-white">배너 이미지</p>
                 <p className="mt-1 text-xs text-zinc-500">
-                  {selectedMedia?.title ?? "선택된 이미지 없음"}
+                  {selectedMedia?.title ?? "현재 사이트 설정 이미지"}
                 </p>
                 <input
                   type="hidden"
                   name="bannerImageUrl"
-                  value={selectedMedia?.url ?? ""}
+                  value={selectedMedia?.webpUrl ?? hero.image}
                   readOnly
                 />
                 <button

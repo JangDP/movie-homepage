@@ -109,6 +109,43 @@ export type Database = {
         Insert: Partial<Database["public"]["Tables"]["media_assets"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["media_assets"]["Row"]>;
       };
+      media_files: {
+        Row: {
+          id: string;
+          title: string;
+          alt: string | null;
+          original_url: string;
+          webp_url: string;
+          thumbnail_url: string;
+          original_path: string;
+          webp_path: string;
+          thumbnail_path: string;
+          mime_type: string;
+          size_bytes: number;
+          width: number | null;
+          height: number | null;
+          uploaded_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          alt?: string | null;
+          original_url: string;
+          webp_url: string;
+          thumbnail_url: string;
+          original_path: string;
+          webp_path: string;
+          thumbnail_path: string;
+          mime_type: string;
+          size_bytes: number;
+          width?: number | null;
+          height?: number | null;
+          uploaded_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["media_files"]["Row"]>;
+      };
       site_settings: {
         Row: {
           id: string;
