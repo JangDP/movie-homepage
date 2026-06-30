@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 
 import { SearchForm } from "@/components/SearchForm";
 
+export const runtime = "edge";
+
 export const metadata: Metadata = {
   title: "검색",
   description: "CineScope Magazine의 영화 뉴스, 리뷰, 추천 글을 검색합니다.",

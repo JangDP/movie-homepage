@@ -17,6 +17,7 @@ import { getCategory, getRelatedPosts } from "@/lib/content";
 import type { ContentCategory } from "@/types/site";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 export const revalidate = 0;
 
 type PostDetailPageProps = {
