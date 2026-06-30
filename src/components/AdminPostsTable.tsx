@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 
+import { useAdminUser } from "@/components/AdminAuthContext";
 import { supabase } from "@/lib/supabase";
 import { getCategory } from "@/lib/content";
+import { canDeletePosts } from "@/types/admin";
 import type { Post } from "@/types/site";
 
 type AdminPostsTableProps = {
@@ -11,11 +13,18 @@ type AdminPostsTableProps = {
 };
 
 export function AdminPostsTable({ posts }: AdminPostsTableProps) {
+  const adminUser = useAdminUser();
+  const allowDelete = canDeletePosts(adminUser.role);
   const [items, setItems] = useState(posts);
   const [message, setMessage] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function deletePost(post: Post) {
+    if (!allowDelete) {
+      setMessage("에디터 권한은 글을 삭제할 수 없습니다.");
+      return;
+    }
+
     if (!supabase) {
       setMessage("\uc218\ud37c\ubca0\uc774\uc2a4 \uc5f0\uacb0\uc774 \uc5c6\uc5b4 \uc0ad\uc81c\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.");
       return;
@@ -87,7 +96,7 @@ export function AdminPostsTable({ posts }: AdminPostsTableProps) {
                 <td className="py-4">
                   <button
                     type="button"
-                    disabled={deletingId === post.id}
+                    disabled={deletingId === post.id || !allowDelete}
                     onClick={() => deletePost(post)}
                     className="rounded border border-red-900 px-3 py-2 text-xs font-bold text-red-300 transition hover:bg-red-950/50 disabled:cursor-not-allowed disabled:opacity-50"
                   >

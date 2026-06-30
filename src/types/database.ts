@@ -119,6 +119,21 @@ export type Database = {
         Insert: Partial<Database["public"]["Tables"]["site_settings"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["site_settings"]["Row"]>;
       };
+      admin_users: {
+        Row: {
+          id: string;
+          email: string;
+          role: "super_admin" | "admin" | "editor";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          role: "super_admin" | "admin" | "editor";
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["admin_users"]["Row"]>;
+      };
     };
     Functions: {
       increment_post_view: {

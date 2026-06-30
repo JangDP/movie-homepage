@@ -1,24 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
+import { useAdminUser } from "@/components/AdminAuthContext";
 import { supabase } from "@/lib/supabase";
+import { adminRoleLabels } from "@/types/admin";
 
 export function AdminSessionStatus() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const adminUser = useAdminUser();
   const [pending, setPending] = useState(false);
-
-  useEffect(() => {
-    if (!supabase) {
-      return;
-    }
-
-    supabase.auth.getUser().then(({ data }) => {
-      setEmail(data.user?.email ?? "");
-    });
-  }, []);
 
   async function signOut() {
     if (!supabase) {
@@ -34,7 +26,8 @@ export function AdminSessionStatus() {
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm">
       <p className="font-bold text-white">관리자</p>
-      <p className="text-xs text-zinc-500">{email || "로그인됨"}</p>
+      <p className="text-xs text-zinc-500">{adminUser.email}</p>
+      <p className="mt-1 text-xs font-bold text-red-300">{adminRoleLabels[adminUser.role]}</p>
       <button
         type="button"
         disabled={pending}

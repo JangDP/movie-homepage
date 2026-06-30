@@ -40,6 +40,7 @@ const adminNav: AdminNavItem[] = [
   },
   { label: "메뉴", href: "/admin/navigation" },
   { label: "애드센스", href: "/admin/adsense" },
+  { label: "관리자 관리", href: "/admin/users" },
   { label: "설정", href: "/admin/settings" },
 ];
 
