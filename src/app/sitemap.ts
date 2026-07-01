@@ -4,6 +4,7 @@ import { siteConfig } from "@/data/site-config";
 import { getPostsFromSupabase } from "@/lib/cms-repository";
 import { absoluteUrl } from "@/lib/seo";
 
+export const runtime = "edge";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
