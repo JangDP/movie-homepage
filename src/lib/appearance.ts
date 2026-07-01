@@ -1,5 +1,4 @@
 import { siteConfig } from "@/data/site-config";
-import { supabase } from "@/lib/supabase";
 import type { SiteAppearance } from "@/types/site";
 
 export const APPEARANCE_SETTINGS_KEY = "appearance_settings";
@@ -15,23 +14,51 @@ export function mergeAppearanceSettings(value?: Partial<SiteAppearance> | null):
   };
 }
 
+function supabaseRestBase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+  return url ? `${url}/rest/v1` : null;
+}
+
+function supabaseHeaders() {
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!key) {
+    return null;
+  }
+
+  return {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+  };
+}
+
 export async function fetchAppearanceSettings() {
-  if (!supabase) {
+  const base = supabaseRestBase();
+  const headers = supabaseHeaders();
+
+  if (!base || !headers) {
     return siteConfig.appearance;
   }
 
-  const { data, error } = await supabase
-    .from("site_settings")
-    .select("value")
-    .eq("key", APPEARANCE_SETTINGS_KEY)
-    .maybeSingle();
+  const search = new URLSearchParams({
+    select: "value",
+    key: `eq.${APPEARANCE_SETTINGS_KEY}`,
+    limit: "1",
+  });
 
-  if (error) {
-    console.error("[appearance_settings]", error.message);
+  const response = await fetch(`${base}/site_settings?${search.toString()}`, {
+    headers,
+    cache: "force-cache",
+  });
+
+  if (!response.ok) {
+    console.error("[appearance_settings]", await response.text());
     return siteConfig.appearance;
   }
 
-  return mergeAppearanceSettings(data?.value as Partial<SiteAppearance> | null);
+  const rows = (await response.json()) as Array<{ value: Partial<SiteAppearance> | null }>;
+
+  return mergeAppearanceSettings(rows[0]?.value);
 }
 
 export function persistAppearanceToBrowser(appearance: SiteAppearance) {

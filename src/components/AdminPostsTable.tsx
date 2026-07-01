@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useAdminUser } from "@/components/AdminAuthContext";
 import { supabase } from "@/lib/supabase";
@@ -9,15 +9,74 @@ import { canDeletePosts } from "@/types/admin";
 import type { Post } from "@/types/site";
 
 type AdminPostsTableProps = {
-  posts: Post[];
+  posts?: Post[];
 };
 
-export function AdminPostsTable({ posts }: AdminPostsTableProps) {
+type PostRow = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  body: string | null;
+  category_id: string;
+  author: string | null;
+  published_at: string | null;
+  read_time: string | null;
+  thumbnail_url: string | null;
+  image_alt: string | null;
+  tags: string[] | null;
+  status: "draft" | "published" | "deleted";
+  featured: boolean | null;
+  view_count: number | null;
+};
+
+function mapPost(row: PostRow): Post {
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    excerpt: row.excerpt ?? "",
+    body: row.body ?? "",
+    category: row.category_id,
+    author: row.author ?? "편집부",
+    publishedAt: row.published_at ?? "",
+    readTime: row.read_time ?? "3분",
+    image: row.thumbnail_url ?? "",
+    imageAlt: row.image_alt ?? row.title,
+    tags: row.tags ?? [],
+    status: row.status,
+    featured: row.featured ?? false,
+    viewCount: row.view_count ?? 0,
+  };
+}
+
+export function AdminPostsTable({ posts = [] }: AdminPostsTableProps) {
   const adminUser = useAdminUser();
   const allowDelete = canDeletePosts(adminUser.role);
   const [items, setItems] = useState(posts);
   const [message, setMessage] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!supabase) {
+      setMessage("Supabase 연결이 없어 글 목록을 불러올 수 없습니다.");
+      return;
+    }
+
+    supabase
+      .from("posts")
+      .select("*")
+      .neq("status", "deleted")
+      .order("published_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          setMessage(`글 목록 불러오기 실패: ${error.message}`);
+          return;
+        }
+
+        setItems(((data ?? []) as PostRow[]).map(mapPost));
+      });
+  }, []);
 
   async function deletePost(post: Post) {
     if (!allowDelete) {

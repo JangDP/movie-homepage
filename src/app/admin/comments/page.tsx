@@ -3,8 +3,6 @@ import type { Metadata } from "next";
 import { AdminCommentsManager } from "@/components/AdminCommentsManager";
 import { AdminShell } from "@/components/AdminShell";
 
-export const runtime = "edge";
-
 export const metadata: Metadata = {
   title: "댓글 관리",
   robots: { index: false, follow: false },

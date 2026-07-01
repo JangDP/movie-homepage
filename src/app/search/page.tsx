@@ -1,22 +1,13 @@
-import type { Metadata } from "next";
+"use client";
+
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { SearchForm } from "@/components/SearchForm";
 
-export const runtime = "edge";
-
-export const metadata: Metadata = {
-  title: "검색",
-  description: "CineScope Magazine의 영화 뉴스, 리뷰, 추천 글을 검색합니다.",
-};
-
-type SearchPageProps = {
-  searchParams: Promise<{
-    q?: string;
-  }>;
-};
-
-export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const params = await searchParams;
+function SearchPageContent() {
+  const searchParams = useSearchParams();
+  const query = searchParams.get("q") ?? undefined;
 
   return (
     <main className="min-h-screen pt-24">
@@ -30,8 +21,16 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             뉴스, 리뷰, 가이드, 추천 글을 키워드로 찾아보세요.
           </p>
         </div>
-        <SearchForm query={params.q} />
+        <SearchForm query={query} />
       </section>
     </main>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen pt-24" />}>
+      <SearchPageContent />
+    </Suspense>
   );
 }

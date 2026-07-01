@@ -4,20 +4,13 @@ import Link from "next/link";
 import { AdminCard } from "@/components/AdminCard";
 import { AdminPostsTable } from "@/components/AdminPostsTable";
 import { AdminShell } from "@/components/AdminShell";
-import { getPostsFromSupabase } from "@/lib/cms-repository";
 
 export const metadata: Metadata = {
   title: "\uae00 \uad00\ub9ac",
   robots: { index: false, follow: false },
 };
 
-export const dynamic = "force-dynamic";
-export const runtime = "edge";
-export const revalidate = 0;
-
-export default async function AdminPostsPage() {
-  const posts = await getPostsFromSupabase();
-
+export default function AdminPostsPage() {
   return (
     <AdminShell
       title={"\uae00 \uad00\ub9ac"}
@@ -39,7 +32,7 @@ export default async function AdminPostsPage() {
           </Link>
         </div>
 
-        <AdminPostsTable posts={posts} />
+        <AdminPostsTable />
       </AdminCard>
     </AdminShell>
   );

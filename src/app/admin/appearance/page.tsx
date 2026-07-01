@@ -3,8 +3,6 @@ import type { Metadata } from "next";
 import { AdminAppearanceManager } from "@/components/AdminAppearanceManager";
 import { AdminShell } from "@/components/AdminShell";
 
-export const runtime = "edge";
-
 export const metadata: Metadata = {
   title: "꾸미기",
   robots: { index: false, follow: false },
