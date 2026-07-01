@@ -59,6 +59,54 @@ a {
   color: #18181b;
 }
 
+.cinescope-editor-paper {
+  color: #111827;
+}
+
+.cinescope-editor-canvas,
+.cinescope-editor-canvas .cinescope-rich-content,
+.cinescope-editor-canvas .ProseMirror {
+  color: #111827;
+}
+
+.cinescope-editor-canvas .ProseMirror {
+  caret-color: #111827;
+}
+
+.cinescope-editor-canvas .ProseMirror p,
+.cinescope-editor-canvas .ProseMirror h1,
+.cinescope-editor-canvas .ProseMirror h2,
+.cinescope-editor-canvas .ProseMirror h3,
+.cinescope-editor-canvas .ProseMirror h4,
+.cinescope-editor-canvas .ProseMirror li,
+.cinescope-editor-canvas .ProseMirror strong,
+.cinescope-editor-canvas .ProseMirror em,
+.cinescope-editor-canvas .ProseMirror u,
+.cinescope-editor-canvas .ProseMirror a {
+  color: #111827;
+}
+
+.cinescope-editor-canvas .ProseMirror p.is-editor-empty:first-child::before {
+  color: #9ca3af;
+}
+
+.cinescope-editor-canvas .ProseMirror blockquote {
+  color: #111827;
+  background: #f9fafb;
+}
+
+.cinescope-editor-canvas .ProseMirror blockquote p {
+  color: #111827;
+}
+
+.cinescope-editor-canvas .cinescope-caption {
+  color: #4b5563;
+}
+
+.cinescope-editor-canvas .cinescope-caption[style] {
+  color: inherit;
+}
+
 .cinescope-rich-content .ProseMirror:focus {
   outline: none;
 }

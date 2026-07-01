@@ -3,7 +3,7 @@ import type { SiteConfig } from "@/types/site";
 export const siteConfig: SiteConfig = {
   name: "CineScope Magazine",
   logoText: "CineScope",
-  url: "https://example.com",
+  url: "https://wkdemvnfworld.com",
   description:
     "영화 뉴스, 리뷰, 관람 가이드, OTT 추천을 다루는 다크톤 영화 전문 매거진입니다.",
   menus: [

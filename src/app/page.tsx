@@ -10,6 +10,7 @@ import { movies } from "@/data/movies";
 import { siteConfig } from "@/data/site-config";
 import { getPostsFromSupabase } from "@/lib/cms-repository";
 import { getFeaturedArticles } from "@/lib/content";
+import { createOrganizationJsonLd, createWebsiteJsonLd } from "@/lib/seo";
 
 export default async function HomePage() {
   const [featured, latest] = await Promise.all([
@@ -24,6 +25,12 @@ export default async function HomePage() {
 
   return (
     <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([createWebsiteJsonLd(), createOrganizationJsonLd()]),
+        }}
+      />
       <HeroBanner hero={hero} />
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">

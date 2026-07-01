@@ -15,6 +15,14 @@ import {
   getReactionCounts,
 } from "@/lib/cms-repository";
 import { getCategory, getRelatedPosts } from "@/lib/content";
+import {
+  absoluteUrl,
+  createArticleJsonLd,
+  createBreadcrumbJsonLd,
+  getPostDescription,
+  getPostKeywords,
+  postUrl,
+} from "@/lib/seo";
 import type { ContentCategory } from "@/types/site";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +41,10 @@ export async function generateMetadata({
 }: PostDetailPageProps): Promise<Metadata> {
   const { category, slug } = await params;
   const { post } = await getPostDetailFromSupabase(category, slug);
+  const categoryInfo = post ? getCategory(post.category) : null;
+  const description = post ? getPostDescription(post) : "";
+  const canonical = post ? postUrl(post) : absoluteUrl(`/${category}/${slug}`);
+  const image = post?.image ? absoluteUrl(post.image) : absoluteUrl(siteConfig.appearance.heroImage);
 
   if (!post) {
     return {
@@ -42,12 +54,33 @@ export async function generateMetadata({
 
   return {
     title: post.title,
-    description: post.excerpt,
+    description,
+    keywords: getPostKeywords(post, categoryInfo?.label),
+    alternates: {
+      canonical,
+    },
     openGraph: {
       title: post.title,
-      description: post.excerpt,
-      images: post.image ? [post.image] : [],
+      description,
+      url: canonical,
+      siteName: siteConfig.name,
+      images: [
+        {
+          url: image,
+          width: 1200,
+          height: 630,
+          alt: post.imageAlt || post.title,
+        },
+      ],
       type: "article",
+      publishedTime: post.publishedAt || undefined,
+      authors: [post.author],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description,
+      images: [image],
     },
   };
 }
@@ -89,9 +122,25 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
     getReactionCounts(post.slug),
   ]);
   const categoryInfo = getCategory(post.category);
+  const canonical = postUrl(post);
+  const jsonLd = [
+    createArticleJsonLd(post, categoryInfo),
+    createBreadcrumbJsonLd([
+      { name: siteConfig.name, url: absoluteUrl("/") },
+      {
+        name: categoryInfo?.label ?? String(post.category),
+        url: absoluteUrl(categoryInfo?.href ?? `/${post.category}`),
+      },
+      { name: post.title, url: canonical },
+    ]),
+  ];
 
   return (
     <main className="min-h-screen pt-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <article>
         <header className="relative isolate min-h-[520px] overflow-hidden border-b border-zinc-900">
           {post.image ? (

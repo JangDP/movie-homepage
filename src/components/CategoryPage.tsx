@@ -5,6 +5,7 @@ import { ArticleGrid } from "@/components/ArticleGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { siteConfig } from "@/data/site-config";
 import { getArticlesByCategory, getCategory } from "@/lib/content";
+import { absoluteUrl, getSeoKeywords } from "@/lib/seo";
 import type { ContentCategory } from "@/types/site";
 
 type CategoryPageProps = {
@@ -17,6 +18,23 @@ export function createCategoryMetadata(categoryId: ContentCategory): Metadata {
   return {
     title: category?.label,
     description: category?.description,
+    keywords: getSeoKeywords([category?.label, category?.description, "영화", "CineScope"]),
+    alternates: {
+      canonical: category?.href ?? `/${categoryId}`,
+    },
+    openGraph: {
+      title: `${category?.label ?? categoryId} | ${siteConfig.name}`,
+      description: category?.description,
+      url: absoluteUrl(category?.href ?? `/${categoryId}`),
+      type: "website",
+      images: [siteConfig.appearance.heroImage],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${category?.label ?? categoryId} | ${siteConfig.name}`,
+      description: category?.description,
+      images: [siteConfig.appearance.heroImage],
+    },
   };
 }
 

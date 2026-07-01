@@ -74,6 +74,66 @@ function getFirstImageFromHtml(html: string) {
   return match?.[1] ?? null;
 }
 
+function getSeoChecks({
+  title,
+  slug,
+  excerpt,
+  seoTitle,
+  metaDescription,
+  bodyText,
+  hasImage,
+}: {
+  title: string;
+  slug: string;
+  excerpt: string;
+  seoTitle: string;
+  metaDescription: string;
+  bodyText: string;
+  hasImage: boolean;
+}) {
+  const checks = [
+    { ok: title.trim().length >= 10, label: "제목을 10자 이상 입력하세요." },
+    { ok: Boolean(slug.trim()), label: "검색 친화적인 slug를 입력하세요." },
+    { ok: (metaDescription || excerpt).trim().length >= 50, label: "요약 또는 메타 설명을 50자 이상 입력하세요." },
+    { ok: bodyText.trim().length >= 300, label: "본문을 300자 이상 작성하세요." },
+    { ok: hasImage, label: "대표 이미지 또는 본문 이미지를 추가하세요." },
+    { ok: (seoTitle || title).trim().length <= 65, label: "SEO 제목은 65자 이하가 좋습니다." },
+  ];
+  const score = Math.round((checks.filter((check) => check.ok).length / checks.length) * 100);
+
+  return {
+    score,
+    missing: checks.filter((check) => !check.ok).map((check) => check.label),
+  };
+}
+
+function SeoScorePanel({ score, missing }: { score: number; missing: string[] }) {
+  const tone =
+    score >= 80
+      ? "border-emerald-900 bg-emerald-950/30 text-emerald-200"
+      : score >= 50
+        ? "border-yellow-900 bg-yellow-950/30 text-yellow-200"
+        : "border-red-900 bg-red-950/30 text-red-200";
+
+  return (
+    <section className={`rounded-lg border p-4 ${tone}`}>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-sm font-black">SEO 점수</h2>
+        <span className="text-2xl font-black">{score}</span>
+      </div>
+      {missing.length > 0 ? (
+        <ul className="mt-3 grid gap-2 text-xs leading-5">
+          {missing.map((item) => (
+            <li key={item}>- {item}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-xs font-bold">기본 SEO 항목이 잘 채워졌습니다.</p>
+      )}
+    </section>
+  );
+}
+
 function getSelectedImage(editor: Editor): SelectedImage | null {
   const { selection } = editor.state;
 
@@ -313,8 +373,22 @@ export function PostEditor() {
   const [pendingMode, setPendingMode] = useState<SaveMode | null>(null);
   const [saveState, setSaveState] = useState<SaveState>({ type: "idle", message: "" });
   const [previewHtml, setPreviewHtml] = useState(emptyContent);
+  const [bodyText, setBodyText] = useState("");
+  const [slugValue, setSlugValue] = useState("");
+  const [excerptValue, setExcerptValue] = useState("");
+  const [seoTitleValue, setSeoTitleValue] = useState("");
+  const [metaDescriptionValue, setMetaDescriptionValue] = useState("");
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
   const isSupabaseReady = useMemo(() => Boolean(supabase), []);
+  const seoCheck = getSeoChecks({
+    title,
+    slug: slugValue,
+    excerpt: excerptValue,
+    seoTitle: seoTitleValue,
+    metaDescription: metaDescriptionValue,
+    bodyText,
+    hasImage: Boolean(featuredImage || getFirstImageFromHtml(previewHtml)),
+  });
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -368,6 +442,7 @@ export function PostEditor() {
     },
     onUpdate({ editor: currentEditor }) {
       setPreviewHtml(currentEditor.getHTML());
+      setBodyText(currentEditor.getText());
       setSelectedImage(getSelectedImage(currentEditor));
     },
     onSelectionUpdate({ editor: currentEditor }) {
@@ -498,6 +573,11 @@ export function PostEditor() {
     setSaveState({ type: "success", message: mode === "published" ? "발행 완료" : "임시 저장 완료" });
     form.reset();
     setTitle("");
+    setSlugValue("");
+    setExcerptValue("");
+    setSeoTitleValue("");
+    setMetaDescriptionValue("");
+    setBodyText("");
     setFeaturedImage(null);
     setSelectedImage(null);
     editor.commands.setContent(emptyContent);
@@ -529,15 +609,15 @@ export function PostEditor() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <main className="min-w-0">
           <section className="mx-auto max-w-6xl rounded-lg border border-zinc-800 bg-zinc-200 p-3 shadow-2xl shadow-black/40 md:p-6">
-            <div className="min-h-[920px] rounded bg-white px-5 py-8 text-zinc-950 shadow-sm md:px-14 md:py-12 xl:px-20">
+            <div className="cinescope-editor-paper min-h-[920px] rounded bg-white px-5 py-8 text-[#111827] shadow-sm md:px-14 md:py-12 xl:px-20">
               <input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 name="title"
                 placeholder="제목을 입력하세요"
-                className="w-full border-0 border-b border-zinc-200 bg-transparent px-0 pb-5 text-4xl font-black leading-tight text-zinc-950 outline-none placeholder:text-zinc-300"
+                className="w-full border-0 border-b border-zinc-200 bg-transparent px-0 pb-5 text-4xl font-black leading-tight text-[#111827] outline-none placeholder:text-[#9ca3af]"
               />
-              <div className="mt-8">
+              <div className="cinescope-editor-canvas mt-8">
                 <EditorContent editor={editor} />
               </div>
             </div>
@@ -560,12 +640,14 @@ export function PostEditor() {
             onOpenMedia={() => setPickerTarget("body")}
           />
 
+          <SeoScorePanel score={seoCheck.score} missing={seoCheck.missing} />
+
           <section className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
             <h2 className="text-sm font-bold text-white">발행 설정</h2>
             <div className="mt-4 grid gap-4">
               <label className="block text-sm font-semibold text-zinc-300">
                 Slug
-                <input name="slug" placeholder="movie-review-slug" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
+                <input name="slug" value={slugValue} onChange={(event) => setSlugValue(event.target.value)} placeholder="movie-review-slug" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
               </label>
               <AdminSelect
                 label="카테고리"
@@ -579,7 +661,7 @@ export function PostEditor() {
               </label>
               <label className="block text-sm font-semibold text-zinc-300">
                 요약 설명
-                <textarea name="excerpt" rows={3} placeholder="목록과 SEO에 표시될 짧은 설명" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
+                <textarea name="excerpt" value={excerptValue} onChange={(event) => setExcerptValue(event.target.value)} rows={3} placeholder="목록과 SEO에 표시될 짧은 설명" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
               </label>
             </div>
           </section>
@@ -598,11 +680,11 @@ export function PostEditor() {
             <div className="mt-4 grid gap-4">
               <label className="block text-sm font-semibold text-zinc-300">
                 SEO 제목
-                <input name="seoTitle" placeholder="검색 결과 제목" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
+                <input name="seoTitle" value={seoTitleValue} onChange={(event) => setSeoTitleValue(event.target.value)} placeholder="검색 결과 제목" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
               </label>
               <label className="block text-sm font-semibold text-zinc-300">
                 메타 설명
-                <textarea name="metaDescription" rows={3} placeholder="검색 결과 설명" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
+                <textarea name="metaDescription" value={metaDescriptionValue} onChange={(event) => setMetaDescriptionValue(event.target.value)} rows={3} placeholder="검색 결과 설명" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
               </label>
             </div>
           </section>

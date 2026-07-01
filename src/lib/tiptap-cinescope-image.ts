@@ -134,6 +134,10 @@ export const CinescopeImage = Node.create({
         {
           src: attrs.src,
           alt: attrs.alt,
+          loading: "lazy",
+          decoding: "async",
+          width: "1200",
+          height: "675",
         },
       ],
       attrs.caption
