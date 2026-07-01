@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { NodeSelection } from "@tiptap/pm/state";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import Link from "@tiptap/extension-link";
@@ -62,7 +62,38 @@ function slugify(value: string) {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 
-  return normalized || `draft-${Date.now()}`;
+  return normalized || `post-${new Date().toISOString().slice(0, 10)}`;
+}
+
+async function getUniqueSlug(baseSlug: string) {
+  const base = slugify(baseSlug);
+
+  if (!supabase) {
+    return base;
+  }
+
+  const { data, error } = await supabase
+    .from("posts")
+    .select("slug")
+    .ilike("slug", `${base}%`)
+    .neq("status", "deleted");
+
+  if (error || !data?.length) {
+    return base;
+  }
+
+  const usedSlugs = new Set(data.map((row) => row.slug));
+
+  if (!usedSlugs.has(base)) {
+    return base;
+  }
+
+  let suffix = 2;
+  while (usedSlugs.has(`${base}-${suffix}`)) {
+    suffix += 1;
+  }
+
+  return `${base}-${suffix}`;
 }
 
 function getValue(formData: FormData, key: string) {
@@ -375,6 +406,9 @@ export function PostEditor() {
   const [previewHtml, setPreviewHtml] = useState(emptyContent);
   const [bodyText, setBodyText] = useState("");
   const [slugValue, setSlugValue] = useState("");
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const [slugPending, setSlugPending] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [excerptValue, setExcerptValue] = useState("");
   const [seoTitleValue, setSeoTitleValue] = useState("");
   const [metaDescriptionValue, setMetaDescriptionValue] = useState("");
@@ -389,6 +423,41 @@ export function PostEditor() {
     bodyText,
     hasImage: Boolean(featuredImage || getFirstImageFromHtml(previewHtml)),
   });
+
+  useEffect(() => {
+    if (slugManuallyEdited) {
+      return;
+    }
+
+    const base = slugify(title);
+
+    if (!title.trim()) {
+      setSlugValue("");
+      return;
+    }
+
+    let cancelled = false;
+    setSlugPending(true);
+
+    const timer = window.setTimeout(() => {
+      getUniqueSlug(base)
+        .then((slug) => {
+          if (!cancelled) {
+            setSlugValue(slug);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setSlugPending(false);
+          }
+        });
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [title, slugManuallyEdited]);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -516,7 +585,7 @@ export function PostEditor() {
       .map((tag) => tag.trim())
       .filter(Boolean);
     const publishedAt = getValue(formData, "publishedAt") || new Date().toISOString().slice(0, 10);
-    const slug = mode === "draft" ? inputSlug || slugify(title) : inputSlug;
+    const slug = await getUniqueSlug(inputSlug || title);
     const html = editor.getHTML();
     const json = editor.getJSON();
     const text = editor.getText().trim();
@@ -574,6 +643,8 @@ export function PostEditor() {
     form.reset();
     setTitle("");
     setSlugValue("");
+    setSlugManuallyEdited(false);
+    setAdvancedOpen(false);
     setExcerptValue("");
     setSeoTitleValue("");
     setMetaDescriptionValue("");
@@ -645,10 +716,15 @@ export function PostEditor() {
           <section className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
             <h2 className="text-sm font-bold text-white">발행 설정</h2>
             <div className="mt-4 grid gap-4">
-              <label className="block text-sm font-semibold text-zinc-300">
-                Slug
-                <input name="slug" value={slugValue} onChange={(event) => setSlugValue(event.target.value)} placeholder="movie-review-slug" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
-              </label>
+              <div className="rounded border border-zinc-800 bg-black px-3 py-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-bold text-zinc-500">자동 slug</span>
+                  {slugPending ? <span className="text-xs font-bold text-red-400">확인 중...</span> : null}
+                </div>
+                <p className="mt-1 break-all text-sm font-bold text-zinc-200">
+                  {slugValue || "제목을 입력하면 자동 생성됩니다."}
+                </p>
+              </div>
               <AdminSelect
                 label="카테고리"
                 name="category"
@@ -663,6 +739,45 @@ export function PostEditor() {
                 요약 설명
                 <textarea name="excerpt" value={excerptValue} onChange={(event) => setExcerptValue(event.target.value)} rows={3} placeholder="목록과 SEO에 표시될 짧은 설명" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
               </label>
+              <button
+                type="button"
+                onClick={() => setAdvancedOpen((value) => !value)}
+                className="rounded border border-zinc-700 px-3 py-2 text-sm font-bold text-zinc-200 hover:border-red-700"
+              >
+                {advancedOpen ? "고급 설정 닫기" : "고급 설정"}
+              </button>
+              {advancedOpen ? (
+                <label className="block rounded border border-zinc-800 bg-black/50 p-3 text-sm font-semibold text-zinc-300">
+                  Slug 직접 수정
+                  <input
+                    name="slug"
+                    value={slugValue}
+                    onChange={(event) => {
+                      setSlugManuallyEdited(true);
+                      setSlugValue(slugify(event.target.value));
+                    }}
+                    placeholder="movie-review-slug"
+                    className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700"
+                  />
+                  <span className="mt-2 block text-xs leading-5 text-zinc-500">
+                    보통은 자동 생성값을 사용하세요. 직접 수정하면 제목 변경 시 자동 갱신이 멈춥니다.
+                  </span>
+                  {slugManuallyEdited ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSlugManuallyEdited(false);
+                        setSlugValue(slugify(title));
+                      }}
+                      className="mt-3 rounded border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-200 hover:border-red-700"
+                    >
+                      제목 기준으로 다시 자동 생성
+                    </button>
+                  ) : null}
+                </label>
+              ) : (
+                <input type="hidden" name="slug" value={slugValue} />
+              )}
             </div>
           </section>
 
