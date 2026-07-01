@@ -1,63 +1,29 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import { EditorContent, useEditor, type Editor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Underline from "@tiptap/extension-underline";
+import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
+import Youtube from "@tiptap/extension-youtube";
+import TextAlign from "@tiptap/extension-text-align";
+import { Table } from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableHeader from "@tiptap/extension-table-header";
+import TableCell from "@tiptap/extension-table-cell";
 
 import { AdminSelect } from "@/components/AdminSelect";
 import { ArticleBody } from "@/components/ArticleBody";
 import { MediaPicker } from "@/components/MediaPicker";
 import { siteConfig } from "@/data/site-config";
 import { supabase } from "@/lib/supabase";
-import {
-  blocksToHtml,
-  blocksToPlainText,
-  createInitialBlocks,
-  createWysiwygBlock,
-  getFirstImageUrl,
-  type ImageAlign,
-  type ImageBlock,
-  type ImageSize,
-  type TextBlock,
-  type TextAlign,
-  type WysiwygBlock,
-  type WysiwygBlockType,
-} from "@/lib/wysiwyg-content";
 import type { MediaFile } from "@/types/cms";
 
 type SaveMode = "draft" | "published";
 type SaveState = { type: "idle" | "success" | "error"; message: string };
 
-const blockMenu: Array<{ type: WysiwygBlockType; label: string }> = [
-  { type: "paragraph", label: "문단" },
-  { type: "heading", label: "소제목" },
-  { type: "image", label: "이미지" },
-  { type: "youtube", label: "유튜브" },
-  { type: "quote", label: "인용문" },
-  { type: "divider", label: "구분선" },
-  { type: "table", label: "표" },
-  { type: "button", label: "버튼" },
-  { type: "ad", label: "광고" },
-  { type: "toc", label: "목차" },
-];
-
-const imageAlignOptions: Array<{ value: ImageAlign; label: string }> = [
-  { value: "left", label: "왼쪽" },
-  { value: "center", label: "가운데" },
-  { value: "right", label: "오른쪽" },
-  { value: "full", label: "전체폭" },
-];
-
-const imageSizeOptions: Array<{ value: ImageSize; label: string }> = [
-  { value: "small", label: "작게" },
-  { value: "medium", label: "보통" },
-  { value: "large", label: "크게" },
-  { value: "full", label: "전체" },
-];
-
-const textAlignOptions: Array<{ value: TextAlign; label: string }> = [
-  { value: "left", label: "왼쪽" },
-  { value: "center", label: "가운데" },
-  { value: "right", label: "오른쪽" },
-];
+const emptyContent = "<p></p>";
 
 function slugify(value: string) {
   const normalized = value
@@ -75,115 +41,210 @@ function getValue(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
-function isTextBlock(block: WysiwygBlock): block is TextBlock {
-  return block.type === "paragraph" || block.type === "heading" || block.type === "quote";
+function getFirstImageFromHtml(html: string) {
+  const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+  return match?.[1] ?? null;
 }
 
-const editorTextAlignClass: Record<TextAlign, string> = {
-  left: "text-left",
-  center: "text-center",
-  right: "text-right",
-};
+function ToolbarButton({
+  active,
+  disabled,
+  children,
+  onClick,
+}: {
+  active?: boolean;
+  disabled?: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`min-h-9 rounded border px-3 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-40 ${
+        active
+          ? "border-red-700 bg-red-700 text-white"
+          : "border-zinc-700 bg-black text-zinc-200 hover:border-red-700 hover:text-white"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
-const editorToolbarButtonClass =
-  "min-h-9 rounded border border-zinc-700 px-3 text-xs font-bold text-zinc-200 transition hover:border-red-700 hover:bg-zinc-900";
+function EditorToolbar({
+  editor,
+  onOpenMedia,
+}: {
+  editor: Editor | null;
+  onOpenMedia: () => void;
+}) {
+  if (!editor) {
+    return null;
+  }
 
-const editorToolbarRedButtonClass =
-  "min-h-9 rounded bg-red-700 px-3 text-xs font-bold text-white transition hover:bg-red-600";
+  function setLink() {
+    const previousUrl = editor?.getAttributes("link").href as string | undefined;
+    const url = window.prompt("링크 URL을 입력하세요.", previousUrl ?? "https://");
 
-function imageClass(block: ImageBlock) {
-  const size = {
-    small: "max-w-sm",
-    medium: "max-w-2xl",
-    large: "max-w-4xl",
-    full: "w-full max-w-none",
-  }[block.size];
+    if (url === null) {
+      return;
+    }
 
-  const align = {
-    left: "mr-auto",
-    center: "mx-auto",
-    right: "ml-auto",
-    full: "mx-auto w-full max-w-none",
-  }[block.align];
+    if (!url.trim()) {
+      editor?.chain().focus().extendMarkRange("link").unsetLink().run();
+      return;
+    }
 
-  return `${size} ${align}`;
+    editor?.chain().focus().extendMarkRange("link").setLink({ href: url.trim() }).run();
+  }
+
+  function insertYoutube() {
+    const url = window.prompt("YouTube URL을 입력하세요.");
+
+    if (!url?.trim()) {
+      return;
+    }
+
+    editor?.chain().focus().setYoutubeVideo({ src: url.trim(), width: 960, height: 540 }).run();
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      <ToolbarButton active={editor.isActive("heading", { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
+        H1
+      </ToolbarButton>
+      <ToolbarButton active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+        H2
+      </ToolbarButton>
+      <ToolbarButton active={editor.isActive("heading", { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
+        H3
+      </ToolbarButton>
+      <ToolbarButton active={editor.isActive("heading", { level: 4 })} onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}>
+        H4
+      </ToolbarButton>
+      <ToolbarButton active={editor.isActive("paragraph")} onClick={() => editor.chain().focus().setParagraph().run()}>
+        본문
+      </ToolbarButton>
+      <ToolbarButton active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
+        B
+      </ToolbarButton>
+      <ToolbarButton active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
+        I
+      </ToolbarButton>
+      <ToolbarButton active={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleUnderline().run()}>
+        U
+      </ToolbarButton>
+      <ToolbarButton active={editor.isActive("link")} onClick={setLink}>
+        링크
+      </ToolbarButton>
+      <ToolbarButton active={editor.isActive({ textAlign: "left" })} onClick={() => editor.chain().focus().setTextAlign("left").run()}>
+        왼쪽
+      </ToolbarButton>
+      <ToolbarButton active={editor.isActive({ textAlign: "center" })} onClick={() => editor.chain().focus().setTextAlign("center").run()}>
+        가운데
+      </ToolbarButton>
+      <ToolbarButton active={editor.isActive({ textAlign: "right" })} onClick={() => editor.chain().focus().setTextAlign("right").run()}>
+        오른쪽
+      </ToolbarButton>
+      <ToolbarButton active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
+        목록
+      </ToolbarButton>
+      <ToolbarButton active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+        번호
+      </ToolbarButton>
+      <ToolbarButton active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+        인용
+      </ToolbarButton>
+      <ToolbarButton onClick={() => editor.chain().focus().setHorizontalRule().run()}>
+        구분선
+      </ToolbarButton>
+      <ToolbarButton onClick={onOpenMedia}>이미지</ToolbarButton>
+      <ToolbarButton onClick={insertYoutube}>유튜브</ToolbarButton>
+      <ToolbarButton onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
+        표
+      </ToolbarButton>
+      <ToolbarButton disabled={!editor.can().addColumnAfter()} onClick={() => editor.chain().focus().addColumnAfter().run()}>
+        열+
+      </ToolbarButton>
+      <ToolbarButton disabled={!editor.can().addRowAfter()} onClick={() => editor.chain().focus().addRowAfter().run()}>
+        행+
+      </ToolbarButton>
+    </div>
+  );
 }
 
 export function PostEditor() {
   const defaultCategory = siteConfig.categories[0]?.id ?? "news";
   const [title, setTitle] = useState("");
-  const [blocks, setBlocks] = useState<WysiwygBlock[]>(createInitialBlocks);
-  const [activeBlockId, setActiveBlockId] = useState(blocks[0]?.id ?? "");
   const [featuredImage, setFeaturedImage] = useState<MediaFile | null>(null);
-  const [pickerTarget, setPickerTarget] = useState<"featured" | "block" | null>(null);
+  const [pickerTarget, setPickerTarget] = useState<"featured" | "body" | null>(null);
   const [pendingMode, setPendingMode] = useState<SaveMode | null>(null);
   const [saveState, setSaveState] = useState<SaveState>({ type: "idle", message: "" });
+  const [previewHtml, setPreviewHtml] = useState(emptyContent);
   const isSupabaseReady = useMemo(() => Boolean(supabase), []);
-  const articleHtml = useMemo(() => blocksToHtml(blocks), [blocks]);
-  const activeBlock = blocks.find((block) => block.id === activeBlockId);
 
-  function updateBlock(id: string, patch: Partial<WysiwygBlock>) {
-    setBlocks((current) =>
-      current.map((block) => (block.id === id ? ({ ...block, ...patch } as WysiwygBlock) : block)),
-    );
-  }
-
-  function addBlock(type: WysiwygBlockType, afterId = activeBlockId) {
-    const nextBlock = createWysiwygBlock(type);
-
-    setBlocks((current) => {
-      const index = current.findIndex((block) => block.id === afterId);
-
-      if (index < 0) {
-        return [...current, nextBlock];
-      }
-
-      return [...current.slice(0, index + 1), nextBlock, ...current.slice(index + 1)];
-    });
-    setActiveBlockId(nextBlock.id);
-
-    if (type === "image") {
-      setPickerTarget("block");
-    }
-  }
-
-  function moveBlock(id: string, direction: -1 | 1) {
-    setBlocks((current) => {
-      const index = current.findIndex((block) => block.id === id);
-      const target = index + direction;
-
-      if (index < 0 || target < 0 || target >= current.length) {
-        return current;
-      }
-
-      const next = [...current];
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
-    });
-  }
-
-  function deleteBlock(id: string) {
-    setBlocks((current) => {
-      const next = current.filter((block) => block.id !== id);
-      const fallback = next[0] ?? createWysiwygBlock("paragraph");
-      setActiveBlockId(fallback.id);
-      return next.length > 0 ? next : [fallback];
-    });
-  }
-
-  function applyInline(tag: "strong" | "em" | "u" | "a") {
-    if (!activeBlock || !isTextBlock(activeBlock)) {
-      return;
-    }
-
-    const label = tag === "strong" ? "굵은 텍스트" : tag === "em" ? "기울임 텍스트" : tag === "u" ? "밑줄 텍스트" : "링크 텍스트";
-    const value =
-      tag === "a"
-        ? `<a href="https://" class="text-red-500 underline">${label}</a>`
-        : `<${tag}>${label}</${tag}>`;
-
-    updateBlock(activeBlock.id, { content: `${activeBlock.content}${activeBlock.content ? " " : ""}${value}` });
-  }
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3, 4] },
+      }),
+      Underline,
+      Link.configure({
+        openOnClick: false,
+        autolink: true,
+        defaultProtocol: "https",
+        HTMLAttributes: {
+          class: "text-red-500 underline decoration-red-500/60 underline-offset-4",
+        },
+      }),
+      Image.configure({
+        allowBase64: false,
+        HTMLAttributes: {
+          class: "mx-auto my-8 h-auto max-w-full rounded-lg border border-zinc-800 bg-zinc-950 object-contain",
+        },
+      }),
+      Youtube.configure({
+        controls: true,
+        nocookie: true,
+        HTMLAttributes: {
+          class: "aspect-video w-full rounded-lg border border-zinc-800 bg-black",
+        },
+      }),
+      TextAlign.configure({
+        types: ["heading", "paragraph"],
+      }),
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: {
+          class: "my-8 w-full border-collapse text-sm",
+        },
+      }),
+      TableRow,
+      TableHeader.configure({
+        HTMLAttributes: {
+          class: "border border-zinc-800 bg-zinc-900 px-4 py-3 text-left font-bold text-white",
+        },
+      }),
+      TableCell.configure({
+        HTMLAttributes: {
+          class: "border border-zinc-800 bg-black/30 px-4 py-3 text-zinc-200",
+        },
+      }),
+    ],
+    content: emptyContent,
+    editorProps: {
+      attributes: {
+        class:
+          "cinescope-rich-content min-h-[760px] w-full max-w-none focus:outline-none",
+      },
+    },
+    onUpdate({ editor: currentEditor }) {
+      setPreviewHtml(currentEditor.getHTML());
+    },
+  });
 
   function selectMedia(asset: MediaFile) {
     if (pickerTarget === "featured") {
@@ -192,33 +253,11 @@ export function PostEditor() {
       return;
     }
 
-    const currentImage = blocks.find((block): block is ImageBlock => block.id === activeBlockId && block.type === "image");
-    const targetId = currentImage?.id ?? createWysiwygBlock("image").id;
-
-    if (currentImage) {
-      updateBlock(currentImage.id, {
-        src: asset.webpUrl,
-        alt: asset.alt || asset.title,
-        caption: asset.title,
-      } as Partial<WysiwygBlock>);
-    } else {
-      const imageBlock: ImageBlock = {
-        id: targetId,
-        type: "image",
-        src: asset.webpUrl,
-        alt: asset.alt || asset.title,
-        caption: asset.title,
-        align: "center",
-        size: "large",
-      };
-
-      setBlocks((current) => {
-        const index = current.findIndex((block) => block.id === activeBlockId);
-        return index < 0 ? [...current, imageBlock] : [...current.slice(0, index + 1), imageBlock, ...current.slice(index + 1)];
-      });
-      setActiveBlockId(imageBlock.id);
-    }
-
+    editor
+      ?.chain()
+      .focus()
+      .setImage({ src: asset.webpUrl, alt: asset.alt || asset.title, title: asset.title })
+      .run();
     setPickerTarget(null);
   }
 
@@ -228,6 +267,11 @@ export function PostEditor() {
 
     if (!supabase) {
       setSaveState({ type: "error", message: "Supabase 환경변수가 없어 저장할 수 없습니다." });
+      return;
+    }
+
+    if (!editor) {
+      setSaveState({ type: "error", message: "에디터가 아직 준비되지 않았습니다." });
       return;
     }
 
@@ -246,30 +290,30 @@ export function PostEditor() {
       .filter(Boolean);
     const publishedAt = getValue(formData, "publishedAt") || new Date().toISOString().slice(0, 10);
     const slug = mode === "draft" ? inputSlug || slugify(title) : inputSlug;
-    const body = blocksToHtml(blocks);
-    const plainText = blocksToPlainText(blocks);
+    const html = editor.getHTML();
+    const json = editor.getJSON();
+    const text = editor.getText().trim();
 
     if (!title.trim()) {
       setSaveState({ type: "error", message: "제목은 필수입니다. 제목만 입력해도 임시 저장할 수 있습니다." });
       return;
     }
 
-    if (mode === "published" && (!slug || !category || !plainText)) {
+    if (mode === "published" && (!slug || !category || !text)) {
       setSaveState({ type: "error", message: "발행하려면 제목, slug, 카테고리, 본문을 모두 입력해야 합니다." });
       return;
     }
 
     setPendingMode(mode);
 
-    const firstImage = getFirstImageUrl(blocks);
-    const imageUrl = featuredImage?.webpUrl ?? firstImage;
-    const summary = excerpt || plainText.slice(0, 140);
+    const imageUrl = featuredImage?.webpUrl ?? getFirstImageFromHtml(html);
+    const summary = excerpt || text.slice(0, 140);
     const payload = {
       title: title.trim(),
       slug,
       category_id: category,
-      body,
-      content_blocks: blocks,
+      body: html,
+      content_blocks: json,
       excerpt: summary,
       author,
       published_at: publishedAt,
@@ -302,8 +346,9 @@ export function PostEditor() {
     setSaveState({ type: "success", message: mode === "published" ? "발행 완료" : "임시 저장 완료" });
     form.reset();
     setTitle("");
-    setBlocks(createInitialBlocks());
     setFeaturedImage(null);
+    editor.commands.setContent(emptyContent);
+    setPreviewHtml(emptyContent);
   }
 
   return (
@@ -315,37 +360,8 @@ export function PostEditor() {
       }}
     >
       <div className="sticky top-0 z-30 -mx-4 border-b border-zinc-800 bg-black/95 px-4 py-3 backdrop-blur">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => addBlock("heading")} className={editorToolbarButtonClass}>제목</button>
-            <button type="button" onClick={() => addBlock("paragraph")} className={editorToolbarButtonClass}>본문</button>
-            <button type="button" onClick={() => applyInline("strong")} className={editorToolbarButtonClass}>B</button>
-            <button type="button" onClick={() => applyInline("em")} className={`${editorToolbarButtonClass} italic`}>I</button>
-            <button type="button" onClick={() => applyInline("u")} className={`${editorToolbarButtonClass} underline`}>U</button>
-            <button type="button" onClick={() => applyInline("a")} className={editorToolbarButtonClass}>링크</button>
-            {textAlignOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  if (activeBlock && isTextBlock(activeBlock)) {
-                    updateBlock(activeBlock.id, { align: option.value } as Partial<WysiwygBlock>);
-                  }
-                }}
-                className={editorToolbarButtonClass}
-              >
-                {option.label}
-              </button>
-            ))}
-            <button type="button" onClick={() => setPickerTarget("block")} className={editorToolbarRedButtonClass}>이미지</button>
-            <button type="button" onClick={() => addBlock("youtube")} className={editorToolbarButtonClass}>유튜브</button>
-            <button type="button" onClick={() => addBlock("quote")} className={editorToolbarButtonClass}>인용</button>
-            <button type="button" onClick={() => addBlock("divider")} className={editorToolbarButtonClass}>구분선</button>
-            <button type="button" onClick={() => addBlock("table")} className={editorToolbarButtonClass}>표</button>
-            <button type="button" onClick={() => addBlock("button")} className={editorToolbarButtonClass}>버튼</button>
-            <button type="button" onClick={() => addBlock("ad")} className={editorToolbarButtonClass}>광고</button>
-            <button type="button" onClick={() => addBlock("toc")} className={editorToolbarButtonClass}>목차</button>
-          </div>
+        <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between">
+          <EditorToolbar editor={editor} onOpenMedia={() => setPickerTarget("body")} />
           <div className="flex gap-2">
             <button type="submit" name="intent" value="draft" disabled={pendingMode !== null || !isSupabaseReady} className="min-h-10 rounded border border-zinc-700 px-4 text-sm font-bold text-zinc-200 hover:border-zinc-400 disabled:cursor-not-allowed disabled:opacity-50">
               {pendingMode === "draft" ? "저장 중..." : "임시 저장"}
@@ -368,35 +384,8 @@ export function PostEditor() {
                 placeholder="제목을 입력하세요"
                 className="w-full border-0 border-b border-zinc-200 bg-transparent px-0 pb-5 text-4xl font-black leading-tight text-zinc-950 outline-none placeholder:text-zinc-300"
               />
-
-              <div className="mt-8 grid gap-4">
-                {blocks.map((block, index) => (
-                  <article
-                    key={block.id}
-                    onClick={() => setActiveBlockId(block.id)}
-                    className={`group relative rounded-lg border p-4 transition md:p-5 ${
-                      activeBlockId === block.id ? "border-red-300 bg-red-50/50" : "border-transparent hover:border-zinc-200"
-                    }`}
-                  >
-                    <div className="absolute -left-11 top-3 hidden flex-col gap-1 md:flex">
-                      <button type="button" onClick={() => addBlock("paragraph", block.id)} className="size-8 rounded-full border border-zinc-300 bg-white text-lg font-black text-zinc-700 shadow-sm hover:border-red-500 hover:text-red-600">+</button>
-                    </div>
-                    <div className="absolute right-2 top-2 hidden gap-1 group-hover:flex">
-                      <button type="button" onClick={() => moveBlock(block.id, -1)} disabled={index === 0} className="block-control">↑</button>
-                      <button type="button" onClick={() => moveBlock(block.id, 1)} disabled={index === blocks.length - 1} className="block-control">↓</button>
-                      <button type="button" onClick={() => deleteBlock(block.id)} className="block-control text-red-600">삭제</button>
-                    </div>
-                    <EditableBlock block={block} updateBlock={updateBlock} openMedia={() => setPickerTarget("block")} />
-                  </article>
-                ))}
-              </div>
-
-              <div className="mt-6 flex flex-wrap gap-2 border-t border-dashed border-zinc-200 pt-5">
-                {blockMenu.map((item) => (
-                  <button key={item.type} type="button" onClick={() => addBlock(item.type)} className="rounded-full border border-zinc-300 px-3 py-2 text-xs font-bold text-zinc-700 hover:border-red-500 hover:text-red-600">
-                    + {item.label}
-                  </button>
-                ))}
+              <div className="mt-8">
+                <EditorContent editor={editor} />
               </div>
             </div>
           </section>
@@ -404,9 +393,9 @@ export function PostEditor() {
           <section className="mt-6 rounded-lg border border-zinc-800 bg-black/45 p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold text-white">실제 글 미리보기</h2>
-              <span className="text-xs text-zinc-500">상세 페이지와 같은 렌더러 사용</span>
+              <span className="text-xs text-zinc-500">상세 페이지와 같은 스타일</span>
             </div>
-            <ArticleBody content={articleHtml} />
+            <ArticleBody content={previewHtml} />
           </section>
         </main>
 
@@ -499,142 +488,4 @@ export function PostEditor() {
       />
     </form>
   );
-}
-
-function EditableBlock({
-  block,
-  updateBlock,
-  openMedia,
-}: {
-  block: WysiwygBlock;
-  updateBlock: (id: string, patch: Partial<WysiwygBlock>) => void;
-  openMedia: () => void;
-}) {
-  if (block.type === "paragraph") {
-    return (
-      <textarea
-        value={block.content}
-        onChange={(event) => updateBlock(block.id, { content: event.target.value } as Partial<WysiwygBlock>)}
-        placeholder="본문을 입력하세요"
-        rows={6}
-        className={`min-h-[180px] w-full resize-y border-0 bg-transparent text-base leading-8 text-zinc-900 outline-none placeholder:text-zinc-300 ${editorTextAlignClass[block.align]}`}
-      />
-    );
-  }
-
-  if (block.type === "heading") {
-    return (
-      <div className="grid gap-2">
-        <select
-          value={block.level ?? 2}
-          onChange={(event) => updateBlock(block.id, { level: Number(event.target.value) as 2 | 3 } as Partial<WysiwygBlock>)}
-          className="w-fit rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-bold text-zinc-700"
-        >
-          <option value={2}>큰 소제목</option>
-          <option value={3}>작은 소제목</option>
-        </select>
-        <input
-          value={block.content}
-          onChange={(event) => updateBlock(block.id, { content: event.target.value } as Partial<WysiwygBlock>)}
-          className={`w-full border-0 bg-transparent text-3xl font-black text-zinc-950 outline-none placeholder:text-zinc-300 ${editorTextAlignClass[block.align]}`}
-        />
-      </div>
-    );
-  }
-
-  if (block.type === "quote") {
-    return (
-      <textarea
-        value={block.content}
-        onChange={(event) => updateBlock(block.id, { content: event.target.value } as Partial<WysiwygBlock>)}
-        rows={5}
-        className={`min-h-[160px] w-full resize-y border-l-4 border-red-600 bg-zinc-50 px-4 py-3 text-lg font-semibold leading-8 text-zinc-800 outline-none ${editorTextAlignClass[block.align]}`}
-      />
-    );
-  }
-
-  if (block.type === "image") {
-    return (
-      <div className="grid gap-4">
-        {block.src ? (
-          <figure className={imageClass(block)}>
-            <img src={block.src} alt={block.alt} className="h-auto w-full rounded-lg border border-zinc-200 bg-zinc-100 object-contain" />
-            {block.caption ? <figcaption className="mt-2 text-center text-sm text-zinc-500">{block.caption}</figcaption> : null}
-          </figure>
-        ) : (
-          <button type="button" onClick={openMedia} className="min-h-[300px] rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-sm font-bold text-zinc-500 hover:border-red-500 hover:text-red-600">
-            미디어 라이브러리에서 이미지 선택
-          </button>
-        )}
-        <div className="grid gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 md:grid-cols-2">
-          <label className="text-xs font-bold text-zinc-600">
-            alt 텍스트
-            <input value={block.alt} onChange={(event) => updateBlock(block.id, { alt: event.target.value } as Partial<WysiwygBlock>)} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 text-sm" />
-          </label>
-          <label className="text-xs font-bold text-zinc-600">
-            캡션
-            <input value={block.caption} onChange={(event) => updateBlock(block.id, { caption: event.target.value } as Partial<WysiwygBlock>)} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 text-sm" />
-          </label>
-          <label className="text-xs font-bold text-zinc-600">
-            정렬
-            <select value={block.align} onChange={(event) => updateBlock(block.id, { align: event.target.value as ImageAlign } as Partial<WysiwygBlock>)} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 text-sm">
-              {imageAlignOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </label>
-          <label className="text-xs font-bold text-zinc-600">
-            크기
-            <select value={block.size} onChange={(event) => updateBlock(block.id, { size: event.target.value as ImageSize } as Partial<WysiwygBlock>)} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 text-sm">
-              {imageSizeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </label>
-          <button type="button" onClick={openMedia} className="rounded bg-zinc-900 px-3 py-2 text-sm font-bold text-white md:col-span-2">다른 이미지 선택</button>
-        </div>
-      </div>
-    );
-  }
-
-  if (block.type === "youtube") {
-    const id = block.url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([^?&]+)/)?.[1];
-
-    return (
-      <div className="grid gap-3">
-        <input value={block.url} onChange={(event) => updateBlock(block.id, { url: event.target.value } as Partial<WysiwygBlock>)} placeholder="YouTube URL" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
-        {id ? <iframe src={`https://www.youtube.com/embed/${id}`} title="YouTube preview" className="aspect-video min-h-[320px] w-full rounded-lg border border-zinc-200" /> : <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-12 text-center text-sm font-bold text-zinc-500">유튜브 주소를 입력하면 미리보기가 표시됩니다.</div>}
-        <input value={block.caption} onChange={(event) => updateBlock(block.id, { caption: event.target.value } as Partial<WysiwygBlock>)} placeholder="영상 캡션" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
-      </div>
-    );
-  }
-
-  if (block.type === "divider") {
-    return <hr className="my-6 border-zinc-300" />;
-  }
-
-  if (block.type === "table") {
-    return (
-      <textarea
-        value={block.rows.map((row) => row.join(" | ")).join("\n")}
-        onChange={(event) => updateBlock(block.id, { rows: event.target.value.split("\n").map((row) => row.split("|").map((cell) => cell.trim())) } as Partial<WysiwygBlock>)}
-        rows={8}
-        className="min-h-[240px] w-full rounded border border-zinc-300 bg-white px-3 py-2 font-mono text-sm"
-      />
-    );
-  }
-
-  if (block.type === "button") {
-    return (
-      <div className={`grid gap-3 ${editorTextAlignClass[block.align]}`}>
-        <a href={block.url} className="inline-flex min-h-11 w-fit items-center justify-center rounded bg-red-700 px-5 text-sm font-black text-white">{block.label}</a>
-        <div className="grid gap-2 md:grid-cols-3">
-          <input value={block.label} onChange={(event) => updateBlock(block.id, { label: event.target.value } as Partial<WysiwygBlock>)} className="rounded border border-zinc-300 px-3 py-2 text-sm" />
-          <input value={block.url} onChange={(event) => updateBlock(block.id, { url: event.target.value } as Partial<WysiwygBlock>)} className="rounded border border-zinc-300 px-3 py-2 text-sm md:col-span-2" />
-        </div>
-      </div>
-    );
-  }
-
-  if (block.type === "ad") {
-    return <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-5 py-8 text-center text-sm font-bold text-zinc-500">AdSense Placeholder · {block.label}</div>;
-  }
-
-  return <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-5 text-sm font-bold text-zinc-600">목차 블록은 저장 시 소제목을 기준으로 자동 생성됩니다.</div>;
 }

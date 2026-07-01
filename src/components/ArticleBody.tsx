@@ -48,10 +48,10 @@ function ArticleImage({ block }: { block: ArticleImageBlock }) {
 }
 
 export function ArticleBody({ content }: ArticleBodyProps) {
-  if (content.includes('data-cinescope-content="true"')) {
+  if (content.includes('data-cinescope-content="true"') || /<\/?(p|h1|h2|h3|h4|ul|ol|li|blockquote|img|iframe|table|hr|strong|em|u|a)\b/i.test(content)) {
     return (
       <div
-        className="text-base leading-8 text-zinc-300"
+        className="cinescope-rich-content text-base leading-8 text-zinc-300"
         dangerouslySetInnerHTML={{ __html: content }}
       />
     );

@@ -49,3 +49,121 @@ a {
   -webkit-line-clamp: 3;
   overflow: hidden;
 }
+
+.cinescope-rich-content {
+  color: #d4d4d8;
+}
+
+.cinescope-rich-content .ProseMirror {
+  min-height: 760px;
+  color: #18181b;
+}
+
+.cinescope-rich-content .ProseMirror:focus {
+  outline: none;
+}
+
+.cinescope-rich-content p {
+  margin: 0 0 1.25rem;
+}
+
+.cinescope-rich-content h1,
+.cinescope-rich-content h2,
+.cinescope-rich-content h3,
+.cinescope-rich-content h4 {
+  margin: 2.25rem 0 1rem;
+  color: inherit;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.cinescope-rich-content h1 {
+  font-size: 2.5rem;
+}
+
+.cinescope-rich-content h2 {
+  font-size: 2rem;
+}
+
+.cinescope-rich-content h3 {
+  font-size: 1.55rem;
+}
+
+.cinescope-rich-content h4 {
+  font-size: 1.25rem;
+}
+
+.cinescope-rich-content ul,
+.cinescope-rich-content ol {
+  margin: 1.25rem 0;
+  padding-left: 1.5rem;
+}
+
+.cinescope-rich-content ul {
+  list-style: disc;
+}
+
+.cinescope-rich-content ol {
+  list-style: decimal;
+}
+
+.cinescope-rich-content li {
+  margin: 0.35rem 0;
+}
+
+.cinescope-rich-content blockquote {
+  margin: 2rem 0;
+  border-left: 4px solid #b91c1c;
+  background: rgba(24, 24, 27, 0.65);
+  padding: 1rem 1.25rem;
+  color: #f4f4f5;
+  font-size: 1.08rem;
+  font-weight: 700;
+}
+
+.cinescope-rich-content hr {
+  margin: 2.5rem 0;
+  border: 0;
+  border-top: 1px solid #3f3f46;
+}
+
+.cinescope-rich-content img {
+  display: block;
+  margin: 2rem auto;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid #27272a;
+  border-radius: 0.5rem;
+  background: #09090b;
+}
+
+.cinescope-rich-content iframe {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  margin: 2rem auto;
+}
+
+.cinescope-rich-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2rem 0;
+}
+
+.cinescope-rich-content th,
+.cinescope-rich-content td {
+  border: 1px solid #3f3f46;
+  padding: 0.75rem 1rem;
+}
+
+.cinescope-rich-content th {
+  background: #18181b;
+  color: #fff;
+  font-weight: 800;
+}
+
+.cinescope-rich-content td {
+  background: rgba(9, 9, 11, 0.35);
+}
