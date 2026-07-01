@@ -8,6 +8,7 @@ import { MovieCard } from "@/components/MovieCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { movies } from "@/data/movies";
 import { siteConfig } from "@/data/site-config";
+import { fetchAppearanceSettings } from "@/lib/appearance";
 import { getPostsFromSupabase } from "@/lib/cms-repository";
 import { getFeaturedArticles } from "@/lib/content";
 import { createOrganizationJsonLd, createWebsiteJsonLd } from "@/lib/seo";
@@ -17,11 +18,12 @@ export default async function HomePage() {
     getFeaturedArticles(),
     getPostsFromSupabase({ status: "published", limit: 6 }),
   ]);
+  const appearance = await fetchAppearanceSettings();
   const hero = {
     ...siteConfig.hero,
-    image: siteConfig.appearance.heroImage,
+    image: appearance.heroImage,
   };
-  const { visibleSections } = siteConfig.appearance;
+  const { visibleSections } = appearance;
 
   return (
     <main>

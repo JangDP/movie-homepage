@@ -69,7 +69,7 @@ export default async function AdminDashboardPage() {
             ))}
           </div>
         </AdminCard>
-        <AdminCard title="현재 사이트 설정" description="site_settings 연결 전까지 기본 설정을 표시합니다.">
+        <AdminCard title="현재 사이트 설정" description="저장된 사이트 설정과 기본 설정을 확인합니다.">
           <dl className="grid gap-3 text-sm">
             <div className="flex justify-between gap-4">
               <dt className="text-zinc-500">사이트명</dt>

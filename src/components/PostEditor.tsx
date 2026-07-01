@@ -18,6 +18,7 @@ import { ArticleBody } from "@/components/ArticleBody";
 import { MediaPicker } from "@/components/MediaPicker";
 import { siteConfig } from "@/data/site-config";
 import { supabase } from "@/lib/supabase";
+import { fetchTags, type TagRow } from "@/lib/tags";
 import {
   CinescopeImage,
   type CinescopeCaptionSize,
@@ -412,6 +413,7 @@ export function PostEditor() {
   const [excerptValue, setExcerptValue] = useState("");
   const [seoTitleValue, setSeoTitleValue] = useState("");
   const [metaDescriptionValue, setMetaDescriptionValue] = useState("");
+  const [availableTags, setAvailableTags] = useState<TagRow[]>([]);
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
   const isSupabaseReady = useMemo(() => Boolean(supabase), []);
   const seoCheck = getSeoChecks({
@@ -423,6 +425,10 @@ export function PostEditor() {
     bodyText,
     hasImage: Boolean(featuredImage || getFirstImageFromHtml(previewHtml)),
   });
+
+  useEffect(() => {
+    fetchTags().then(setAvailableTags);
+  }, []);
 
   useEffect(() => {
     if (slugManuallyEdited) {
@@ -733,7 +739,19 @@ export function PostEditor() {
               />
               <label className="block text-sm font-semibold text-zinc-300">
                 태그
-                <input name="tags" placeholder="리뷰, OTT, 액션" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
+                <input name="tags" list="cinescope-tags" placeholder="리뷰, OTT, 액션" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
+                <datalist id="cinescope-tags">
+                  {availableTags.map((tag) => (
+                    <option key={tag.id} value={tag.name} />
+                  ))}
+                </datalist>
+                {availableTags.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {availableTags.slice(0, 8).map((tag) => (
+                      <span key={tag.id} className="rounded bg-zinc-900 px-2 py-1 text-[11px] text-zinc-500">#{tag.name}</span>
+                    ))}
+                  </div>
+                ) : null}
               </label>
               <label className="block text-sm font-semibold text-zinc-300">
                 요약 설명

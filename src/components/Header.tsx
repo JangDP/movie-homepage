@@ -5,13 +5,16 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { siteConfig } from "@/data/site-config";
+import { fetchAppearanceSettings, readAppearanceFromBrowser } from "@/lib/appearance";
 import { fetchNavigationMenus, normalizeMenus } from "@/lib/navigation";
 import type { NavItem } from "@/types/site";
+import type { SiteAppearance } from "@/types/site";
 
 export function Header() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [menus, setMenus] = useState<NavItem[]>(() => normalizeMenus(siteConfig.menus));
+  const [appearance, setAppearance] = useState<SiteAppearance>(() => readAppearanceFromBrowser());
 
   useEffect(() => {
     let mounted = true;
@@ -19,6 +22,11 @@ export function Header() {
     fetchNavigationMenus().then((items) => {
       if (mounted) {
         setMenus(items);
+      }
+    });
+    fetchAppearanceSettings().then((value) => {
+      if (mounted) {
+        setAppearance(value);
       }
     });
 
@@ -34,11 +42,21 @@ export function Header() {
       }
     }
 
+    function handleAppearanceStorage(event: StorageEvent) {
+      if (event.key !== "cinescope-appearance-settings" || !event.newValue) {
+        return;
+      }
+
+      setAppearance(readAppearanceFromBrowser());
+    }
+
     window.addEventListener("storage", handleStorage);
+    window.addEventListener("storage", handleAppearanceStorage);
 
     return () => {
       mounted = false;
       window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("storage", handleAppearanceStorage);
     };
   }, []);
 
@@ -49,7 +67,7 @@ export function Header() {
           <span className="flex size-8 items-center justify-center rounded bg-red-700 text-sm font-black text-white">
             C
           </span>
-          <span className="text-lg font-black text-white">{siteConfig.appearance.logoText}</span>
+          <span className="text-lg font-black text-white">{appearance.logoText}</span>
         </Link>
         <nav className="hidden items-center gap-1 lg:flex" aria-label="상단 메뉴">
           {menus.map((item) => {

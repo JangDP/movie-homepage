@@ -28,3 +28,11 @@ export function canManageNavigation(role: AdminRole) {
 export function canDeleteComments(role: AdminRole) {
   return role === "super_admin" || role === "admin";
 }
+
+export function canManageTags(role: AdminRole) {
+  return role === "super_admin" || role === "admin";
+}
+
+export function canManageAppearance(role: AdminRole) {
+  return role === "super_admin" || role === "admin";
+}

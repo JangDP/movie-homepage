@@ -41,6 +41,23 @@ export type Database = {
         Insert: Partial<Database["public"]["Tables"]["categories"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["categories"]["Row"]>;
       };
+      tags: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          sort_order: number | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          sort_order?: number | null;
+          created_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["tags"]["Row"]>;
+      };
       comments: {
         Row: {
           id: string;

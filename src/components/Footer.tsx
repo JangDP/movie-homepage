@@ -1,17 +1,20 @@
 import Link from "next/link";
 
 import { siteConfig } from "@/data/site-config";
+import { fetchAppearanceSettings } from "@/lib/appearance";
 
-export function Footer() {
+export async function Footer() {
+  const appearance = await fetchAppearanceSettings();
+
   return (
     <footer className="border-t border-zinc-900 bg-black">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1.4fr_1fr_1fr] lg:px-8">
         <div className="space-y-4">
           <Link href="/" className="text-xl font-black text-white">
-            {siteConfig.logoText}
+            {appearance.logoText}
           </Link>
           <p className="max-w-md text-sm leading-6 text-zinc-500">
-            {siteConfig.appearance.footerText}
+            {appearance.footerText}
           </p>
           <p className="text-xs text-zinc-600">{siteConfig.footer.copyright}</p>
         </div>

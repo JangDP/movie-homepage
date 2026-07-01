@@ -5,6 +5,7 @@ import { Analytics } from "@/components/Analytics";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { siteConfig } from "@/data/site-config";
+import { fetchAppearanceSettings } from "@/lib/appearance";
 import { absoluteUrl, siteUrl } from "@/lib/seo";
 
 import "./globals.css";
@@ -51,14 +52,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const appearance = await fetchAppearanceSettings();
   const bodyStyle = {
-    "--accent-color": siteConfig.appearance.accentColor,
-    "--site-background-image": `url(${siteConfig.appearance.backgroundImage})`,
+    "--accent-color": appearance.accentColor,
+    "--site-background-image": `url(${appearance.backgroundImage})`,
   } as CSSProperties;
 
   return (
