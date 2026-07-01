@@ -137,6 +137,85 @@ a {
   background: #09090b;
 }
 
+.cinescope-rich-content .cinescope-image {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.cinescope-rich-content .cinescope-image.ProseMirror-selectednode {
+  outline: 3px solid rgba(185, 28, 28, 0.75);
+  outline-offset: 6px;
+  border-radius: 0.5rem;
+}
+
+.cinescope-rich-content .cinescope-image img {
+  margin: 0;
+  width: 100%;
+}
+
+.cinescope-rich-content .cinescope-image-align-left {
+  margin-right: auto;
+  margin-left: 0;
+}
+
+.cinescope-rich-content .cinescope-image-align-center {
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.cinescope-rich-content .cinescope-image-align-right {
+  margin-right: 0;
+  margin-left: auto;
+}
+
+.cinescope-rich-content .cinescope-image-align-full {
+  width: 100%;
+  max-width: none;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.cinescope-rich-content .cinescope-image-size-small {
+  max-width: 26rem;
+}
+
+.cinescope-rich-content .cinescope-image-size-medium {
+  max-width: 42rem;
+}
+
+.cinescope-rich-content .cinescope-image-size-large {
+  max-width: 64rem;
+}
+
+.cinescope-rich-content .cinescope-image-size-full {
+  width: 100%;
+  max-width: none;
+}
+
+.cinescope-rich-content .cinescope-caption {
+  display: block;
+  margin-top: 0.65rem;
+  text-align: center;
+  line-height: 1.6;
+  color: #6b7280;
+}
+
+.cinescope-rich-content .cinescope-caption-small {
+  font-size: 0.8rem;
+}
+
+.cinescope-rich-content .cinescope-caption-normal {
+  font-size: 0.95rem;
+}
+
+.cinescope-rich-content .cinescope-caption-large {
+  font-size: 1.08rem;
+}
+
+.cinescope-rich-content .cinescope-caption-empty {
+  display: none;
+}
+
 .cinescope-rich-content iframe {
   display: block;
   width: 100%;
