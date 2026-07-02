@@ -62,16 +62,20 @@ export type Database = {
         Row: {
           id: string;
           post_id: string;
+          parent_id: string | null;
           author_name: string;
           body: string;
+          is_admin_reply: boolean | null;
           is_deleted: boolean | null;
           status: "pending" | "approved" | "hidden";
           created_at: string;
         };
         Insert: {
           post_id: string;
+          parent_id?: string | null;
           author_name: string;
           body: string;
+          is_admin_reply?: boolean;
           is_deleted?: boolean;
           status?: "pending" | "approved" | "hidden";
         };

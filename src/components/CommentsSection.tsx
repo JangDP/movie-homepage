@@ -14,6 +14,14 @@ export function CommentsSection({ postId, initialComments }: CommentsSectionProp
   const [comments, setComments] = useState(initialComments);
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
+  const rootComments = comments.filter((comment) => !comment.parentId);
+  const repliesByParent = comments.reduce<Record<string, Comment[]>>((groups, comment) => {
+    if (comment.parentId) {
+      groups[comment.parentId] = [...(groups[comment.parentId] ?? []), comment];
+    }
+
+    return groups;
+  }, {});
 
   async function submitComment(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,8 +66,10 @@ export function CommentsSection({ postId, initialComments }: CommentsSectionProp
       {
         id: data.id,
         postId: data.post_id,
+        parentId: data.parent_id ?? null,
         authorName: data.author_name,
         body: data.body,
+        isAdminReply: Boolean(data.is_admin_reply),
         createdAt: data.created_at,
       },
       ...current,
@@ -72,18 +82,40 @@ export function CommentsSection({ postId, initialComments }: CommentsSectionProp
     <section className="rounded-lg border border-zinc-800 bg-zinc-950 p-5">
       <h2 className="text-lg font-bold text-white">{"\ub313\uae00"}</h2>
       <div className="mt-5 grid gap-4">
-        {comments.length === 0 ? (
+        {rootComments.length === 0 ? (
           <p className="text-sm text-zinc-500">
             {"\uc544\uc9c1 \ub313\uae00\uc774 \uc5c6\uc2b5\ub2c8\ub2e4."}
           </p>
         ) : (
-          comments.map((comment) => (
+          rootComments.map((comment) => (
             <article key={comment.id} className="rounded border border-zinc-800 bg-black p-4">
               <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
                 <span className="font-bold text-zinc-300">{comment.authorName}</span>
                 <span>{new Date(comment.createdAt).toLocaleString("ko-KR")}</span>
               </div>
               <p className="mt-3 text-sm leading-6 text-zinc-300">{comment.body}</p>
+
+              {(repliesByParent[comment.id] ?? []).length > 0 ? (
+                <div className="mt-4 grid gap-3 border-l border-red-900/70 pl-4">
+                  {(repliesByParent[comment.id] ?? []).map((reply) => (
+                    <div
+                      key={reply.id}
+                      className="rounded border border-zinc-800 bg-zinc-950 p-3"
+                    >
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                        <span className="rounded bg-red-700 px-2 py-0.5 font-bold text-white">
+                          관리자 답글
+                        </span>
+                        <span className="font-bold text-zinc-300">{reply.authorName}</span>
+                        <span>{new Date(reply.createdAt).toLocaleString("ko-KR")}</span>
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-300">
+                        {reply.body}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </article>
           ))
         )}

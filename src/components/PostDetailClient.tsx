@@ -61,8 +61,10 @@ function mapComment(row: CommentRow): Comment {
   return {
     id: row.id,
     postId: row.post_id,
+    parentId: row.parent_id ?? null,
     authorName: row.author_name,
     body: row.body,
+    isAdminReply: Boolean(row.is_admin_reply),
     createdAt: row.created_at,
   };
 }
