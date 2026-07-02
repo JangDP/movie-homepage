@@ -5,12 +5,26 @@ create table if not exists public.site_visits (
   id uuid primary key default gen_random_uuid(),
   visitor_id text not null,
   page_path text not null default '/',
-  visited_at timestamptz not null default now(),
-  unique (visitor_id, page_path)
+  visit_date date not null default ((now() at time zone 'Asia/Seoul')::date),
+  visited_at timestamptz not null default now()
 );
+
+alter table public.site_visits
+  add column if not exists visit_date date not null default ((now() at time zone 'Asia/Seoul')::date);
+
+alter table public.site_visits
+  drop constraint if exists site_visits_visitor_id_page_path_key;
+
+drop index if exists public.site_visits_unique_daily_idx;
+
+create unique index if not exists site_visits_unique_daily_idx
+on public.site_visits(visitor_id, page_path, visit_date);
 
 create index if not exists site_visits_page_path_idx
 on public.site_visits(page_path);
+
+create index if not exists site_visits_date_idx
+on public.site_visits(visit_date);
 
 alter table public.site_visits enable row level security;
 

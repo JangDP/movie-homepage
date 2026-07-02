@@ -122,12 +122,14 @@ export type Database = {
           id: string;
           visitor_id: string;
           page_path: string;
+          visit_date: string;
           visited_at: string;
         };
         Insert: {
           id?: string;
           visitor_id: string;
           page_path?: string;
+          visit_date?: string;
           visited_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["site_visits"]["Row"]>;
