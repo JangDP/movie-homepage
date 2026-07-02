@@ -50,6 +50,11 @@ export const metadata: Metadata = {
       "max-video-preview": -1,
     },
   },
+  verification: {
+    other: {
+      "naver-site-verification": "9bdfc7fce69b2120df81163436844cc03ccc58db",
+    },
+  },
 };
 
 export default async function RootLayout({
