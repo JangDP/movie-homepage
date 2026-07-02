@@ -17,6 +17,7 @@ import { AdminSelect } from "@/components/AdminSelect";
 import { ArticleBody } from "@/components/ArticleBody";
 import { MediaPicker } from "@/components/MediaPicker";
 import { siteConfig } from "@/data/site-config";
+import { fetchSpellCheckRules } from "@/lib/spell-check-rules";
 import { supabase } from "@/lib/supabase";
 import { fetchTags, type TagRow } from "@/lib/tags";
 import {
@@ -244,7 +245,7 @@ function SpellCheckPanel({
   if (result.totalCount === 0) {
     return (
       <section className="rounded-lg border border-emerald-900 bg-emerald-950/30 p-4 text-sm font-bold text-emerald-200">
-        맞춤법 오류가 없습니다.
+        현재 로컬 검사 규칙에서 발견된 맞춤법 오류가 없습니다.
       </section>
     );
   }
@@ -781,13 +782,19 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
     setSpellCheckPending(true);
     setSpellCheckResult(null);
 
+    const savedRules = await fetchSpellCheckRules({ activeOnly: true });
     const result = await spellCheckService.check({
       title,
       body: editor.getText(),
       excerpt: excerptValue,
       seoTitle: seoTitleValue,
       metaDescription: metaDescriptionValue,
-    });
+    }, savedRules.map((rule) => ({
+      type: rule.type,
+      wrongText: rule.wrong_text,
+      suggestion: rule.suggestion,
+      message: rule.message,
+    })));
 
     setSpellCheckResult(result);
     setSpellCheckPending(false);

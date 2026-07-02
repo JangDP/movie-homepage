@@ -28,6 +28,13 @@ type SpellRule = {
   message: string;
 };
 
+export type CustomSpellCheckRule = {
+  type: SpellCheckIssueType;
+  wrongText: string;
+  suggestion: string;
+  message?: string | null;
+};
+
 const localRules: SpellRule[] = [
   { type: "spacing", original: "할수", replacement: "할 수", message: "'할 수'는 띄어 씁니다." },
   { type: "spacing", original: "볼수", replacement: "볼 수", message: "'볼 수'는 띄어 씁니다." },
@@ -43,6 +50,11 @@ const localRules: SpellRule[] = [
   { type: "spelling", original: "몇일", replacement: "며칠", message: "'몇일'은 '며칠'로 씁니다." },
   { type: "spelling", original: "오랫만", replacement: "오랜만", message: "'오랫만'은 '오랜만'으로 씁니다." },
   { type: "spelling", original: "어의", replacement: "어이", message: "'어의없다'는 '어이없다'로 씁니다." },
+  { type: "spelling", original: "어딧", replacement: "어디 있", message: "'어딧'은 '어디 있'으로 쓰는 것이 자연스럽습니다." },
+  { type: "spelling", original: "어딨", replacement: "어디 있", message: "'어딨'은 '어디 있'으로 풀어 쓰는 것이 자연스럽습니다." },
+  { type: "spelling", original: "는쥐", replacement: "는지", message: "'는쥐'는 '는지'로 씁니다." },
+  { type: "spelling", original: "은쥐", replacement: "은지", message: "'은쥐'는 '은지'로 씁니다." },
+  { type: "spelling", original: "한쥐", replacement: "한지", message: "'한쥐'는 '한지'로 씁니다." },
   { type: "spacing", original: "  ", replacement: " ", message: "연속된 공백을 하나로 줄입니다." },
 ];
 
@@ -74,13 +86,24 @@ function findAllIndexes(value: string, search: string) {
 }
 
 export class SpellCheckService {
-  async check(input: SpellCheckInput): Promise<SpellCheckResult> {
+  async check(input: SpellCheckInput, customRules: CustomSpellCheckRule[] = []): Promise<SpellCheckResult> {
     const issues: SpellCheckIssue[] = [];
+    const rules = [
+      ...localRules,
+      ...customRules
+        .filter((rule) => rule.wrongText.trim() && rule.suggestion.trim())
+        .map((rule) => ({
+          type: rule.type,
+          original: rule.wrongText,
+          replacement: rule.suggestion,
+          message: rule.message || `'${rule.wrongText}'은 '${rule.suggestion}'으로 수정할 수 있습니다.`,
+        })),
+    ];
 
     Object.entries(input).forEach(([fieldName, value]) => {
       const field = fieldName as SpellCheckField;
 
-      localRules.forEach((rule) => {
+      rules.forEach((rule) => {
         findAllIndexes(value, rule.original).forEach((index) => {
           issues.push({
             id: `${field}:${rule.original}:${rule.replacement}:${index}`,

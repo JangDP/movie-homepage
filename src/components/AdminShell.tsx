@@ -27,6 +27,7 @@ const adminNav: AdminNavItem[] = [
   { label: "카테고리", href: "/admin/categories" },
   { label: "댓글", href: "/admin/comments" },
   { label: "태그", href: "/admin/tags" },
+  { label: "맞춤법 사전", href: "/admin/spell-check-rules" },
   { label: "미디어", href: "/admin/media" },
   {
     label: "꾸미기",

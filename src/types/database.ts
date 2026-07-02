@@ -58,6 +58,31 @@ export type Database = {
         };
         Update: Partial<Database["public"]["Tables"]["tags"]["Row"]>;
       };
+      spell_check_rules: {
+        Row: {
+          id: string;
+          wrong_text: string;
+          suggestion: string;
+          message: string | null;
+          type: "spelling" | "spacing";
+          is_active: boolean;
+          sort_order: number | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          wrong_text: string;
+          suggestion: string;
+          message?: string | null;
+          type?: "spelling" | "spacing";
+          is_active?: boolean;
+          sort_order?: number | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["spell_check_rules"]["Row"]>;
+      };
       comments: {
         Row: {
           id: string;
