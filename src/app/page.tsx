@@ -2,22 +2,18 @@ import Link from "next/link";
 
 import { AdPlaceholder } from "@/components/AdPlaceholder";
 import { ArticleCard } from "@/components/ArticleCard";
-import { ArticleGrid } from "@/components/ArticleGrid";
 import { HeroBanner } from "@/components/HeroBanner";
+import { LatestArticles } from "@/components/LatestArticles";
 import { MovieCard } from "@/components/MovieCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { movies } from "@/data/movies";
 import { siteConfig } from "@/data/site-config";
 import { fetchAppearanceSettings } from "@/lib/appearance";
-import { getPostsFromSupabase } from "@/lib/cms-repository";
 import { getFeaturedArticles } from "@/lib/content";
 import { createOrganizationJsonLd, createWebsiteJsonLd } from "@/lib/seo";
 
 export default async function HomePage() {
-  const [featured, latest] = await Promise.all([
-    getFeaturedArticles(),
-    getPostsFromSupabase({ status: "published", limit: 6 }),
-  ]);
+  const featured = await getFeaturedArticles();
   const appearance = await fetchAppearanceSettings();
   const hero = {
     ...siteConfig.hero,
@@ -81,7 +77,7 @@ export default async function HomePage() {
             href="/search"
             linkLabel="글 검색"
           />
-          <ArticleGrid articles={latest} />
+          <LatestArticles />
         </section>
       ) : null}
 
