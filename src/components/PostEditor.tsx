@@ -31,6 +31,27 @@ import type { MediaFile } from "@/types/cms";
 type SaveMode = "draft" | "published";
 type SaveState = { type: "idle" | "success" | "error"; message: string };
 type SelectedImage = { pos: number; attrs: CinescopeImageAttrs };
+type PostEditorProps = {
+  postId?: string;
+};
+type ExistingPostRow = {
+  title: string;
+  slug: string;
+  category_id: string;
+  body: string | null;
+  excerpt: string | null;
+  author: string | null;
+  published_at: string | null;
+  read_time: string | null;
+  thumbnail_url: string | null;
+  image_alt: string | null;
+  tags: string[] | null;
+  status: SaveMode | "deleted";
+  featured: boolean | null;
+  seo_title: string | null;
+  meta_description: string | null;
+  og_image_url: string | null;
+};
 
 const emptyContent = "<p></p>";
 
@@ -397,10 +418,11 @@ function ImageEditPanel({
   );
 }
 
-export function PostEditor() {
+export function PostEditor({ postId }: PostEditorProps = {}) {
   const defaultCategory = siteConfig.categories[0]?.id ?? "news";
   const [title, setTitle] = useState("");
   const [featuredImage, setFeaturedImage] = useState<MediaFile | null>(null);
+  const [existingThumbnailUrl, setExistingThumbnailUrl] = useState<string | null>(null);
   const [pickerTarget, setPickerTarget] = useState<"featured" | "body" | null>(null);
   const [pendingMode, setPendingMode] = useState<SaveMode | null>(null);
   const [saveState, setSaveState] = useState<SaveState>({ type: "idle", message: "" });
@@ -415,6 +437,8 @@ export function PostEditor() {
   const [metaDescriptionValue, setMetaDescriptionValue] = useState("");
   const [availableTags, setAvailableTags] = useState<TagRow[]>([]);
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
+  const [existingPost, setExistingPost] = useState<ExistingPostRow | null>(null);
+  const [loadingPost, setLoadingPost] = useState(Boolean(postId));
   const isSupabaseReady = useMemo(() => Boolean(supabase), []);
   const seoCheck = getSeoChecks({
     title,
@@ -429,6 +453,69 @@ export function PostEditor() {
   useEffect(() => {
     fetchTags().then(setAvailableTags);
   }, []);
+
+  useEffect(() => {
+    if (!postId) {
+      setLoadingPost(false);
+      return;
+    }
+
+    if (!supabase) {
+      return;
+    }
+
+    const client = supabase;
+    let cancelled = false;
+
+    async function loadPost() {
+      setLoadingPost(true);
+      setSaveState({ type: "idle", message: "" });
+
+      const { data, error } = await client
+        .from("posts")
+        .select("*")
+        .eq("id", postId)
+        .maybeSingle();
+
+      if (cancelled) {
+        return;
+      }
+
+      if (error) {
+        setSaveState({ type: "error", message: `글 불러오기 실패: ${error.message}` });
+        setLoadingPost(false);
+        return;
+      }
+
+      if (!data) {
+        setSaveState({ type: "error", message: "수정할 글을 찾을 수 없습니다." });
+        setLoadingPost(false);
+        return;
+      }
+
+      const post = data as ExistingPostRow;
+      const html = post.body || emptyContent;
+
+      setExistingPost(post);
+      setTitle(post.title);
+      setSlugValue(post.slug);
+      setSlugManuallyEdited(true);
+      setAdvancedOpen(true);
+      setExcerptValue(post.excerpt ?? "");
+      setSeoTitleValue(post.seo_title ?? "");
+      setMetaDescriptionValue(post.meta_description ?? "");
+      setExistingThumbnailUrl(post.thumbnail_url ?? post.og_image_url ?? null);
+      setPreviewHtml(html);
+      setBodyText("");
+      setLoadingPost(false);
+    }
+
+    void loadPost();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [postId]);
 
   useEffect(() => {
     if (slugManuallyEdited) {
@@ -525,6 +612,17 @@ export function PostEditor() {
     },
   });
 
+  useEffect(() => {
+    if (!editor || !existingPost) {
+      return;
+    }
+
+    const html = existingPost.body || emptyContent;
+    editor.commands.setContent(html);
+    setPreviewHtml(html);
+    setBodyText(editor.getText());
+  }, [editor, existingPost]);
+
   function selectMedia(asset: MediaFile) {
     if (pickerTarget === "featured") {
       setFeaturedImage(asset);
@@ -591,7 +689,7 @@ export function PostEditor() {
       .map((tag) => tag.trim())
       .filter(Boolean);
     const publishedAt = getValue(formData, "publishedAt") || new Date().toISOString().slice(0, 10);
-    const slug = await getUniqueSlug(inputSlug || title);
+    const slug = postId ? slugify(inputSlug || title) : await getUniqueSlug(inputSlug || title);
     const html = editor.getHTML();
     const json = editor.getJSON();
     const text = editor.getText().trim();
@@ -608,7 +706,7 @@ export function PostEditor() {
 
     setPendingMode(mode);
 
-    const imageUrl = featuredImage?.webpUrl ?? getFirstImageFromHtml(html);
+    const imageUrl = featuredImage?.webpUrl ?? existingThumbnailUrl ?? getFirstImageFromHtml(html);
     const summary = excerpt || text.slice(0, 140);
     const payload = {
       title: title.trim(),
@@ -630,11 +728,15 @@ export function PostEditor() {
       og_image_url: imageUrl,
     };
 
-    let { error } = await supabase.from("posts").insert(payload);
+    let { error } = postId
+      ? await supabase.from("posts").update(payload).eq("id", postId)
+      : await supabase.from("posts").insert(payload);
 
     if (error && error.message.toLowerCase().includes("content_blocks")) {
       const { content_blocks: _contentBlocks, ...fallbackPayload } = payload;
-      const fallbackResult = await supabase.from("posts").insert(fallbackPayload);
+      const fallbackResult = postId
+        ? await supabase.from("posts").update(fallbackPayload).eq("id", postId)
+        : await supabase.from("posts").insert(fallbackPayload);
       error = fallbackResult.error;
     }
 
@@ -645,7 +747,28 @@ export function PostEditor() {
       return;
     }
 
-    setSaveState({ type: "success", message: mode === "published" ? "발행 완료" : "임시 저장 완료" });
+    setSaveState({
+      type: "success",
+      message: postId
+        ? mode === "published"
+          ? "글 수정 및 발행 완료"
+          : "글 수정 및 임시 저장 완료"
+        : mode === "published"
+          ? "발행 완료"
+          : "임시 저장 완료",
+    });
+    if (postId) {
+      setExistingPost({
+        ...payload,
+        body: html,
+        content_blocks: json,
+        category_id: category,
+        thumbnail_url: imageUrl ?? null,
+        image_alt: featuredImage?.alt ?? title,
+        created_at: null,
+      } as unknown as ExistingPostRow);
+      return;
+    }
     form.reset();
     setTitle("");
     setSlugValue("");
@@ -659,6 +782,14 @@ export function PostEditor() {
     setSelectedImage(null);
     editor.commands.setContent(emptyContent);
     setPreviewHtml(emptyContent);
+  }
+
+  if (loadingPost) {
+    return (
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-8 text-center text-sm text-zinc-400">
+        수정할 글을 불러오는 중입니다.
+      </div>
+    );
   }
 
   return (
@@ -734,12 +865,12 @@ export function PostEditor() {
               <AdminSelect
                 label="카테고리"
                 name="category"
-                defaultValue={defaultCategory}
+                defaultValue={existingPost?.category_id ?? defaultCategory}
                 options={siteConfig.categories.map((category) => ({ label: category.label, value: category.id }))}
               />
               <label className="block text-sm font-semibold text-zinc-300">
                 태그
-                <input name="tags" list="cinescope-tags" placeholder="리뷰, OTT, 액션" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
+                <input name="tags" list="cinescope-tags" defaultValue={existingPost?.tags?.join(", ") ?? ""} placeholder="리뷰, OTT, 액션" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
                 <datalist id="cinescope-tags">
                   {availableTags.map((tag) => (
                     <option key={tag.id} value={tag.name} />
@@ -827,18 +958,18 @@ export function PostEditor() {
             <div className="mt-4 grid gap-4">
               <label className="block text-sm font-semibold text-zinc-300">
                 작성자
-                <input name="author" defaultValue="편집부" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
+                <input name="author" defaultValue={existingPost?.author ?? "편집부"} className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
               </label>
               <label className="block text-sm font-semibold text-zinc-300">
                 발행일
-                <input name="publishedAt" type="date" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
+                <input name="publishedAt" type="date" defaultValue={existingPost?.published_at ?? ""} className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
               </label>
               <label className="block text-sm font-semibold text-zinc-300">
                 읽는 시간
-                <input name="readTime" placeholder="5분" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
+                <input name="readTime" defaultValue={existingPost?.read_time ?? ""} placeholder="5분" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
               </label>
               <label className="flex items-center gap-2 text-sm font-semibold text-zinc-300">
-                <input type="checkbox" name="featured" className="size-4 accent-red-700" />
+                <input type="checkbox" name="featured" defaultChecked={Boolean(existingPost?.featured)} className="size-4 accent-red-700" />
                 추천 글로 표시
               </label>
             </div>

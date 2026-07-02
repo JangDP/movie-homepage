@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useAdminUser } from "@/components/AdminAuthContext";
@@ -153,6 +154,13 @@ export function AdminPostsTable({ posts = [] }: AdminPostsTableProps) {
                 <td className="py-4 pr-4">{post.publishedAt}</td>
                 <td className="py-4 pr-4 text-zinc-500">{post.slug}</td>
                 <td className="py-4">
+                  <div className="flex gap-2">
+                  <Link
+                    href={`/admin/posts/${post.id}/edit`}
+                    className="rounded border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-200 transition hover:border-red-700 hover:text-white"
+                  >
+                    수정
+                  </Link>
                   <button
                     type="button"
                     disabled={deletingId === post.id || !allowDelete}
@@ -161,6 +169,7 @@ export function AdminPostsTable({ posts = [] }: AdminPostsTableProps) {
                   >
                     {deletingId === post.id ? "\ucc98\ub9ac \uc911" : "\uc0ad\uc81c"}
                   </button>
+                  </div>
                 </td>
               </tr>
             ))}
