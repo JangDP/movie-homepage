@@ -117,6 +117,21 @@ export type Database = {
         };
         Update: Partial<Database["public"]["Tables"]["page_views"]["Row"]>;
       };
+      site_visits: {
+        Row: {
+          id: string;
+          visitor_id: string;
+          page_path: string;
+          visited_at: string;
+        };
+        Insert: {
+          id?: string;
+          visitor_id: string;
+          page_path?: string;
+          visited_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["site_visits"]["Row"]>;
+      };
       media_assets: {
         Row: {
           id: string;

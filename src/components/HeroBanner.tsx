@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { HomeVisitorCounter } from "@/components/HomeVisitorCounter";
 import type { HeroBanner as HeroBannerType } from "@/types/site";
 
 type HeroBannerProps = {
@@ -45,6 +46,7 @@ export function HeroBanner({ hero }: HeroBannerProps) {
               {hero.secondaryCta.label}
             </Link>
           </div>
+          <HomeVisitorCounter />
         </div>
       </div>
     </section>
