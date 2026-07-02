@@ -98,8 +98,9 @@ export function AdminLoginForm() {
       return;
     }
 
-    setState({ type: "success", message: "로그인 완료" });
-    router.replace(nextPath.startsWith("/admin") ? nextPath : "/admin");
+    setState({ type: "success", message: "로그인 완료. OTP 확인으로 이동합니다." });
+    const safeNextPath = nextPath.startsWith("/admin") ? nextPath : "/admin";
+    router.replace(`/admin/mfa?next=${encodeURIComponent(safeNextPath)}`);
     router.refresh();
   }
 

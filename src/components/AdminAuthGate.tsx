@@ -79,6 +79,43 @@ export function AdminAuthGate({ children }: AdminAuthGateProps) {
         return;
       }
 
+      const { data: factorData, error: factorError } = await supabase.auth.mfa.listFactors();
+
+      if (!mounted) {
+        return;
+      }
+
+      if (factorError) {
+        setErrorMessage(factorError.message);
+        setStatus("error");
+        return;
+      }
+
+      const hasVerifiedTotp = factorData.totp.some((factor) => factor.status === "verified");
+
+      if (!hasVerifiedTotp) {
+        router.replace(`/admin/mfa?setup=1&next=${encodeURIComponent(pathname)}`);
+        return;
+      }
+
+      const { data: aalData, error: aalError } =
+        await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+      if (!mounted) {
+        return;
+      }
+
+      if (aalError) {
+        setErrorMessage(aalError.message);
+        setStatus("error");
+        return;
+      }
+
+      if (aalData.nextLevel === "aal2" && aalData.currentLevel !== "aal2") {
+        router.replace(`/admin/mfa?next=${encodeURIComponent(pathname)}`);
+        return;
+      }
+
       setAdminUser(mapAdminUser(data as Parameters<typeof mapAdminUser>[0]));
       setStatus("ready");
     }
