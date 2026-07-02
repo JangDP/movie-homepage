@@ -20,6 +20,11 @@ import { siteConfig } from "@/data/site-config";
 import { supabase } from "@/lib/supabase";
 import { fetchTags, type TagRow } from "@/lib/tags";
 import {
+  spellCheckService,
+  type SpellCheckIssue,
+  type SpellCheckResult,
+} from "@/lib/spell-check-service";
+import {
   CinescopeImage,
   type CinescopeCaptionSize,
   type CinescopeImageAlign,
@@ -183,6 +188,109 @@ function SeoScorePanel({ score, missing }: { score: number; missing: string[] })
       ) : (
         <p className="mt-3 text-xs font-bold">기본 SEO 항목이 잘 채워졌습니다.</p>
       )}
+    </section>
+  );
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function replaceFirst(value: string, original: string, suggestion: string) {
+  return value.replace(new RegExp(escapeRegExp(original)), suggestion);
+}
+
+function HighlightedContext({ issue }: { issue: SpellCheckIssue }) {
+  const index = issue.context.indexOf(issue.original);
+
+  if (index < 0) {
+    return <span>{issue.context}</span>;
+  }
+
+  return (
+    <span>
+      {issue.context.slice(0, index)}
+      <mark className="bg-red-950/60 text-red-200 underline decoration-red-500 decoration-2 underline-offset-4">
+        {issue.original}
+      </mark>
+      {issue.context.slice(index + issue.original.length)}
+    </span>
+  );
+}
+
+function SpellCheckPanel({
+  result,
+  pending,
+  onApply,
+  onApplyAll,
+}: {
+  result: SpellCheckResult | null;
+  pending: boolean;
+  onApply: (issue: SpellCheckIssue) => void;
+  onApplyAll: () => void;
+}) {
+  if (pending) {
+    return (
+      <section className="rounded-lg border border-zinc-800 bg-zinc-950 p-4 text-sm font-bold text-zinc-300">
+        맞춤법 검사 중...
+      </section>
+    );
+  }
+
+  if (!result) {
+    return null;
+  }
+
+  if (result.totalCount === 0) {
+    return (
+      <section className="rounded-lg border border-emerald-900 bg-emerald-950/30 p-4 text-sm font-bold text-emerald-200">
+        맞춤법 오류가 없습니다.
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-lg border border-red-900/70 bg-red-950/20 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-sm font-black text-white">맞춤법 검사 결과</h2>
+          <p className="mt-1 text-xs text-red-200">
+            맞춤법 {result.spellingCount}건 / 띄어쓰기 {result.spacingCount}건 / 총{" "}
+            {result.totalCount}건 발견
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onApplyAll}
+          className="min-h-9 rounded bg-red-700 px-3 text-xs font-bold text-white hover:bg-red-600"
+        >
+          모두 수정
+        </button>
+      </div>
+      <div className="mt-4 grid gap-3">
+        {result.issues.map((issue) => (
+          <article key={issue.id} className="rounded border border-zinc-800 bg-black p-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-zinc-400">{issue.message}</p>
+                <p className="mt-2 text-sm leading-6 text-zinc-200">
+                  <HighlightedContext issue={issue} />
+                </p>
+                <p className="mt-2 text-xs text-zinc-500">
+                  제안: <span className="font-bold text-emerald-300">{issue.suggestion}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onApply(issue)}
+                className="rounded border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-200 hover:border-red-700 hover:text-white"
+              >
+                수정
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
@@ -439,6 +547,8 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
   const [existingPost, setExistingPost] = useState<ExistingPostRow | null>(null);
   const [loadingPost, setLoadingPost] = useState(Boolean(postId));
+  const [spellCheckPending, setSpellCheckPending] = useState(false);
+  const [spellCheckResult, setSpellCheckResult] = useState<SpellCheckResult | null>(null);
   const isSupabaseReady = useMemo(() => Boolean(supabase), []);
   const seoCheck = getSeoChecks({
     title,
@@ -600,6 +710,7 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
     editorProps: {
       attributes: {
         class: "cinescope-rich-content min-h-[760px] w-full max-w-none focus:outline-none",
+        spellcheck: "true",
       },
     },
     onUpdate({ editor: currentEditor }) {
@@ -659,6 +770,85 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
     }
 
     setPickerTarget(null);
+  }
+
+  async function runSpellCheck() {
+    if (!editor) {
+      setSaveState({ type: "error", message: "에디터가 아직 준비되지 않았습니다." });
+      return;
+    }
+
+    setSpellCheckPending(true);
+    setSpellCheckResult(null);
+
+    const result = await spellCheckService.check({
+      title,
+      body: editor.getText(),
+      excerpt: excerptValue,
+      seoTitle: seoTitleValue,
+      metaDescription: metaDescriptionValue,
+    });
+
+    setSpellCheckResult(result);
+    setSpellCheckPending(false);
+  }
+
+  function applySpellCheckIssue(issue: SpellCheckIssue, clearApplied = true) {
+    if (issue.field === "title") {
+      setTitle((value) => replaceFirst(value, issue.original, issue.suggestion));
+    }
+
+    if (issue.field === "excerpt") {
+      setExcerptValue((value) => replaceFirst(value, issue.original, issue.suggestion));
+    }
+
+    if (issue.field === "seoTitle") {
+      setSeoTitleValue((value) => replaceFirst(value, issue.original, issue.suggestion));
+    }
+
+    if (issue.field === "metaDescription") {
+      setMetaDescriptionValue((value) => replaceFirst(value, issue.original, issue.suggestion));
+    }
+
+    if (issue.field === "body" && editor) {
+      const nextHtml = replaceFirst(editor.getHTML(), issue.original, issue.suggestion);
+      editor.commands.setContent(nextHtml);
+      setPreviewHtml(nextHtml);
+      setBodyText(editor.getText());
+    }
+
+    if (clearApplied) {
+      setSpellCheckResult((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const issues = current.issues.filter((item) => item.id !== issue.id);
+        const spellingCount = issues.filter((item) => item.type === "spelling").length;
+        const spacingCount = issues.filter((item) => item.type === "spacing").length;
+
+        return {
+          issues,
+          spellingCount,
+          spacingCount,
+          totalCount: issues.length,
+        };
+      });
+    }
+  }
+
+  function applyAllSpellCheckIssues() {
+    if (!spellCheckResult) {
+      return;
+    }
+
+    spellCheckResult.issues.forEach((issue) => applySpellCheckIssue(issue, false));
+    setSpellCheckResult({
+      issues: [],
+      spellingCount: 0,
+      spacingCount: 0,
+      totalCount: 0,
+    });
   }
 
   async function savePost(event: FormEvent<HTMLFormElement>, mode: SaveMode) {
@@ -803,6 +993,14 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
         <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between">
           <EditorToolbar editor={editor} onOpenMedia={() => setPickerTarget("body")} />
           <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => void runSpellCheck()}
+              disabled={spellCheckPending || !editor}
+              className="min-h-10 rounded border border-red-900 px-4 text-sm font-bold text-red-200 hover:bg-red-950/50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {spellCheckPending ? "맞춤법 검사 중..." : "맞춤법 검사"}
+            </button>
             <button type="submit" name="intent" value="draft" disabled={pendingMode !== null || !isSupabaseReady} className="min-h-10 rounded border border-zinc-700 px-4 text-sm font-bold text-zinc-200 hover:border-zinc-400 disabled:cursor-not-allowed disabled:opacity-50">
               {pendingMode === "draft" ? "저장 중..." : "임시 저장"}
             </button>
@@ -813,6 +1011,13 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
         </div>
       </div>
 
+      <SpellCheckPanel
+        result={spellCheckResult}
+        pending={spellCheckPending}
+        onApply={applySpellCheckIssue}
+        onApplyAll={applyAllSpellCheckIssues}
+      />
+
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <main className="min-w-0">
           <section className="mx-auto max-w-6xl rounded-lg border border-zinc-800 bg-zinc-200 p-3 shadow-2xl shadow-black/40 md:p-6">
@@ -821,6 +1026,7 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 name="title"
+                spellCheck
                 placeholder="제목을 입력하세요"
                 className="w-full border-0 border-b border-zinc-200 bg-transparent px-0 pb-5 text-4xl font-black leading-tight text-[#111827] outline-none placeholder:text-[#9ca3af]"
               />
@@ -885,7 +1091,7 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
               </label>
               <label className="block text-sm font-semibold text-zinc-300">
                 요약 설명
-                <textarea name="excerpt" value={excerptValue} onChange={(event) => setExcerptValue(event.target.value)} rows={3} placeholder="목록과 SEO에 표시될 짧은 설명" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
+                <textarea name="excerpt" value={excerptValue} onChange={(event) => setExcerptValue(event.target.value)} rows={3} spellCheck placeholder="목록과 SEO에 표시될 짧은 설명" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
               </label>
               <button
                 type="button"
@@ -943,11 +1149,11 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
             <div className="mt-4 grid gap-4">
               <label className="block text-sm font-semibold text-zinc-300">
                 SEO 제목
-                <input name="seoTitle" value={seoTitleValue} onChange={(event) => setSeoTitleValue(event.target.value)} placeholder="검색 결과 제목" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
+                <input name="seoTitle" value={seoTitleValue} onChange={(event) => setSeoTitleValue(event.target.value)} spellCheck placeholder="검색 결과 제목" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
               </label>
               <label className="block text-sm font-semibold text-zinc-300">
                 메타 설명
-                <textarea name="metaDescription" value={metaDescriptionValue} onChange={(event) => setMetaDescriptionValue(event.target.value)} rows={3} placeholder="검색 결과 설명" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
+                <textarea name="metaDescription" value={metaDescriptionValue} onChange={(event) => setMetaDescriptionValue(event.target.value)} rows={3} spellCheck placeholder="검색 결과 설명" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
               </label>
             </div>
           </section>
