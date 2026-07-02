@@ -19,6 +19,7 @@ type SetupFactor = {
   id: string;
   qrCode: string;
   secret: string;
+  uri: string;
 };
 
 function safeAdminNextPath(value: string | null) {
@@ -33,18 +34,24 @@ function safeAdminNextPath(value: string | null) {
   return value;
 }
 
-function MfaQrCode({ value }: { value: string }) {
-  if (value.trim().startsWith("<svg")) {
+function MfaQrCode({ qrCode }: { qrCode: string }) {
+  const value = qrCode.trim();
+
+  if (!value || value.startsWith("otpauth://")) {
+    return null;
+  }
+
+  if (value.startsWith("<svg")) {
     return (
       <div
-        className="mx-auto max-w-[240px] rounded bg-white p-3"
+        className="mx-auto max-w-[260px] rounded bg-white p-4"
         dangerouslySetInnerHTML={{ __html: value }}
       />
     );
   }
 
   return (
-    <div className="mx-auto max-w-[240px] rounded bg-white p-3">
+    <div className="mx-auto max-w-[260px] rounded bg-white p-4">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={value} alt="OTP 등록 QR 코드" className="h-auto w-full" />
     </div>
@@ -65,6 +72,34 @@ export function AdminMfaManager() {
 
   useEffect(() => {
     let mounted = true;
+
+    async function enrollFactor() {
+      if (!supabase) {
+        return;
+      }
+
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: "totp",
+        friendlyName: "CineScope CMS",
+      });
+
+      if (!mounted) {
+        return;
+      }
+
+      if (error) {
+        setMessage(error.message);
+        setMode("error");
+        return;
+      }
+
+      setSetupFactor({
+        id: data.id,
+        qrCode: data.totp.qr_code ?? "",
+        secret: data.totp.secret ?? "",
+        uri: "uri" in data.totp ? String(data.totp.uri) : "",
+      });
+    }
 
     async function loadMfaState() {
       if (!supabase) {
@@ -123,33 +158,6 @@ export function AdminMfaManager() {
 
       setMode("setup");
       await enrollFactor();
-    }
-
-    async function enrollFactor() {
-      if (!supabase) {
-        return;
-      }
-
-      const { data, error } = await supabase.auth.mfa.enroll({
-        factorType: "totp",
-        friendlyName: "CineScope CMS",
-      });
-
-      if (!mounted) {
-        return;
-      }
-
-      if (error) {
-        setMessage(error.message);
-        setMode("error");
-        return;
-      }
-
-      setSetupFactor({
-        id: data.id,
-        qrCode: data.totp.qr_code,
-        secret: data.totp.secret,
-      });
     }
 
     void loadMfaState();
@@ -258,17 +266,25 @@ export function AdminMfaManager() {
                 <p className="mt-2 text-sm leading-6 text-zinc-500">
                   OTP 앱에서 QR 코드를 스캔한 뒤 생성된 6자리 숫자를 입력하세요.
                 </p>
+
                 {setupFactor?.qrCode ? (
                   <div className="mt-4">
-                    <MfaQrCode value={setupFactor.qrCode} />
+                    <MfaQrCode qrCode={setupFactor.qrCode} />
                   </div>
                 ) : (
                   <p className="mt-4 text-sm text-zinc-500">QR 코드를 만드는 중입니다.</p>
                 )}
+
                 {setupFactor?.secret ? (
-                  <p className="mt-3 break-all text-xs text-zinc-500">
-                    직접 입력 키: <span className="text-zinc-300">{setupFactor.secret}</span>
-                  </p>
+                  <div className="mt-3 rounded border border-zinc-800 bg-black p-3">
+                    <p className="text-xs font-bold text-zinc-300">QR 스캔이 안 될 때</p>
+                    <p className="mt-1 text-xs leading-5 text-zinc-500">
+                      OTP 앱에서 직접 입력 또는 설정 키 입력을 선택하고 아래 키를 넣으세요.
+                    </p>
+                    <p className="mt-2 break-all rounded bg-zinc-950 p-2 font-mono text-xs text-zinc-100">
+                      {setupFactor.secret}
+                    </p>
+                  </div>
                 ) : null}
               </div>
             </div>
