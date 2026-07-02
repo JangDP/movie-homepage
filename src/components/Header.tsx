@@ -12,6 +12,7 @@ import type { SiteAppearance } from "@/types/site";
 
 export function Header() {
   const pathname = usePathname();
+  const isAdminMode = pathname.startsWith("/admin");
   const [open, setOpen] = useState(false);
   const [menus, setMenus] = useState<NavItem[]>(() => normalizeMenus(siteConfig.menus));
   const [appearance, setAppearance] = useState<SiteAppearance>(() => readAppearanceFromBrowser());
@@ -63,12 +64,22 @@ export function Header() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-black/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+        <Link href={isAdminMode ? "/admin" : "/"} className="flex items-center gap-2">
           <span className="flex size-8 items-center justify-center rounded bg-red-700 text-sm font-black text-white">
             C
           </span>
           <span className="text-lg font-black text-white">{appearance.logoText}</span>
         </Link>
+        {isAdminMode ? (
+          <Link
+            href="/admin"
+            className="rounded border border-red-800 bg-red-950/40 px-2.5 py-1 text-xs font-black text-red-200 transition hover:border-red-600 hover:bg-red-700 hover:text-white"
+          >
+            에디터 모드
+          </Link>
+        ) : null}
+        </div>
         <nav className="hidden items-center gap-1 lg:flex" aria-label="상단 메뉴">
           {menus.map((item) => {
             const active = pathname === item.href;
