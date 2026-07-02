@@ -681,7 +681,6 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
     const category = getValue(formData, "category") || defaultCategory;
     const excerpt = getValue(formData, "excerpt");
     const author = getValue(formData, "author") || "편집부";
-    const readTime = getValue(formData, "readTime") || "3분";
     const seoTitle = getValue(formData, "seoTitle");
     const metaDescription = getValue(formData, "metaDescription");
     const tags = getValue(formData, "tags")
@@ -717,7 +716,7 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
       excerpt: summary,
       author,
       published_at: publishedAt,
-      read_time: readTime,
+      read_time: null,
       thumbnail_url: imageUrl,
       image_alt: featuredImage?.alt ?? title,
       tags,
@@ -963,10 +962,6 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
               <label className="block text-sm font-semibold text-zinc-300">
                 발행일
                 <input name="publishedAt" type="date" defaultValue={existingPost?.published_at ?? ""} className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
-              </label>
-              <label className="block text-sm font-semibold text-zinc-300">
-                읽는 시간
-                <input name="readTime" defaultValue={existingPost?.read_time ?? ""} placeholder="5분" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
               </label>
               <label className="flex items-center gap-2 text-sm font-semibold text-zinc-300">
                 <input type="checkbox" name="featured" defaultChecked={Boolean(existingPost?.featured)} className="size-4 accent-red-700" />

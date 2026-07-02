@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { siteConfig } from "@/data/site-config";
 import { getCategory } from "@/lib/content";
 import type { Article } from "@/types/site";
 
@@ -11,13 +12,14 @@ type ArticleCardProps = {
 
 export function ArticleCard({ article, priority = false }: ArticleCardProps) {
   const category = getCategory(article.category);
+  const imageSrc = article.image || siteConfig.appearance.heroImage;
 
   return (
     <article className="group overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/20 transition hover:-translate-y-1 hover:border-red-700/70">
       <Link href={`/${article.category}/${article.slug}`} className="block">
         <div className="relative aspect-[16/10] overflow-hidden bg-zinc-900">
           <Image
-            src={article.image}
+            src={imageSrc}
             alt={article.imageAlt}
             fill
             sizes="(max-width: 768px) 100vw, 33vw"
@@ -32,8 +34,6 @@ export function ArticleCard({ article, priority = false }: ArticleCardProps) {
         <div className="space-y-3 p-5">
           <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
             <span>{article.publishedAt}</span>
-            <span aria-hidden="true">/</span>
-            <span>{article.readTime}</span>
             <span aria-hidden="true">/</span>
             <span>{article.author}</span>
           </div>

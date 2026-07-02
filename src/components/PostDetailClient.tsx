@@ -253,8 +253,6 @@ export function PostDetailClient({ category, slug }: PostDetailClientProps) {
               <span>/</span>
               <span>{post.publishedAt}</span>
               <span>/</span>
-              <span>{post.readTime}</span>
-              <span>/</span>
               <PostViewCounter
                 postId={post.id}
                 postSlug={post.slug}

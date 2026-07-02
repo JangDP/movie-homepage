@@ -133,6 +133,7 @@ export function AdminPostsTable({ posts = [] }: AdminPostsTableProps) {
               <th className="py-3 pr-4">{"\uce74\ud14c\uace0\ub9ac"}</th>
               <th className="py-3 pr-4">{"\uc0c1\ud0dc"}</th>
               <th className="py-3 pr-4">{"\uc791\uc131\uc790"}</th>
+              <th className="py-3 pr-4">추천</th>
               <th className="py-3 pr-4">{"\ubc1c\ud589\uc77c"}</th>
               <th className="py-3 pr-4">slug</th>
               <th className="py-3">{"\uad00\ub9ac"}</th>
@@ -151,6 +152,19 @@ export function AdminPostsTable({ posts = [] }: AdminPostsTableProps) {
                   </span>
                 </td>
                 <td className="py-4 pr-4">{post.author}</td>
+                <td className="py-4 pr-4">
+                  {post.featured ? (
+                    <span
+                      title="추천 글"
+                      aria-label="추천 글"
+                      className="inline-flex size-8 items-center justify-center rounded bg-red-700/15 text-lg text-red-300"
+                    >
+                      👍
+                    </span>
+                  ) : (
+                    <span className="text-zinc-700">-</span>
+                  )}
+                </td>
                 <td className="py-4 pr-4">{post.publishedAt}</td>
                 <td className="py-4 pr-4 text-zinc-500">{post.slug}</td>
                 <td className="py-4">
