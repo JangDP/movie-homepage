@@ -1,3 +1,5 @@
+import { englishSpellRules } from "@/data/english-spell-rules";
+
 export type SpellCheckField = "title" | "body" | "excerpt" | "seoTitle" | "metaDescription";
 
 export type SpellCheckIssueType = "spelling" | "spacing";
@@ -26,6 +28,8 @@ type SpellRule = {
   original: string;
   replacement: string;
   message: string;
+  caseSensitive?: boolean;
+  match?: "substring" | "word";
 };
 
 export type CustomSpellCheckRule = {
@@ -58,6 +62,15 @@ const localRules: SpellRule[] = [
   { type: "spacing", original: "  ", replacement: " ", message: "연속된 공백을 하나로 줄입니다." },
 ];
 
+const englishRules: SpellRule[] = englishSpellRules.map((rule) => ({
+  type: "spelling",
+  original: rule.wrong,
+  replacement: rule.suggestion,
+  message: `English: '${rule.wrong}' is commonly corrected to '${rule.suggestion}'.`,
+  caseSensitive: false,
+  match: "word",
+}));
+
 const fieldLabels: Record<SpellCheckField, string> = {
   title: "제목",
   body: "본문",
@@ -85,34 +98,89 @@ function findAllIndexes(value: string, search: string) {
   return indexes;
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function findRuleMatches(value: string, rule: SpellRule) {
+  if (rule.match !== "word") {
+    return findAllIndexes(value, rule.original).map((index) => ({
+      index,
+      original: rule.original,
+      suggestion: rule.replacement,
+    }));
+  }
+
+  const flags = rule.caseSensitive === false ? "gi" : "g";
+  const pattern = new RegExp(`(^|[^A-Za-z])(${escapeRegExp(rule.original)})(?=$|[^A-Za-z])`, flags);
+  const matches: Array<{ index: number; original: string; suggestion: string }> = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(value)) !== null) {
+    const prefix = match[1] ?? "";
+    const original = match[2] ?? rule.original;
+
+    matches.push({
+      index: match.index + prefix.length,
+      original,
+      suggestion: matchOriginalCase(original, rule.replacement),
+    });
+
+    if (match.index === pattern.lastIndex) {
+      pattern.lastIndex += 1;
+    }
+  }
+
+  return matches;
+}
+
+function matchOriginalCase(original: string, suggestion: string) {
+  if (original === original.toUpperCase()) {
+    return suggestion.toUpperCase();
+  }
+
+  if (original[0] === original[0]?.toUpperCase()) {
+    return suggestion.charAt(0).toUpperCase() + suggestion.slice(1);
+  }
+
+  return suggestion;
+}
+
 export class SpellCheckService {
   async check(input: SpellCheckInput, customRules: CustomSpellCheckRule[] = []): Promise<SpellCheckResult> {
     const issues: SpellCheckIssue[] = [];
-    const rules = [
+    const rules: SpellRule[] = [
       ...localRules,
+      ...englishRules,
       ...customRules
         .filter((rule) => rule.wrongText.trim() && rule.suggestion.trim())
-        .map((rule) => ({
-          type: rule.type,
-          original: rule.wrongText,
-          replacement: rule.suggestion,
-          message: rule.message || `'${rule.wrongText}'은 '${rule.suggestion}'으로 수정할 수 있습니다.`,
-        })),
+        .map((rule): SpellRule => {
+          const isEnglishWord = /^[A-Za-z]+$/.test(rule.wrongText);
+
+          return {
+            type: rule.type,
+            original: rule.wrongText,
+            replacement: rule.suggestion,
+            message: rule.message || `'${rule.wrongText}'은 '${rule.suggestion}'으로 수정할 수 있습니다.`,
+            caseSensitive: !isEnglishWord,
+            match: isEnglishWord ? "word" : "substring",
+          };
+        }),
     ];
 
     Object.entries(input).forEach(([fieldName, value]) => {
       const field = fieldName as SpellCheckField;
 
       rules.forEach((rule) => {
-        findAllIndexes(value, rule.original).forEach((index) => {
+        findRuleMatches(value, rule).forEach((match) => {
           issues.push({
-            id: `${field}:${rule.original}:${rule.replacement}:${index}`,
+            id: `${field}:${match.original}:${match.suggestion}:${match.index}`,
             field,
             type: rule.type,
-            original: rule.original,
-            suggestion: rule.replacement,
+            original: match.original,
+            suggestion: match.suggestion,
             message: `${fieldLabels[field]}: ${rule.message}`,
-            context: createContext(value, index, rule.original),
+            context: createContext(value, match.index, match.original),
           });
         });
       });
