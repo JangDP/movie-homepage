@@ -57,11 +57,20 @@ async function restGet<T>(path: string, init?: RequestInit) {
     return { data: null as T | null, error: "Supabase environment variables are missing." };
   }
 
-  const response = await fetch(`${base}${path}`, {
-    headers,
-    cache: "force-cache",
-    ...init,
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${base}${path}`, {
+      headers,
+      cache: "no-store",
+      ...init,
+    });
+  } catch (error) {
+    return {
+      data: null as T | null,
+      error: error instanceof Error ? error.message : "Supabase request failed.",
+    };
+  }
 
   if (!response.ok) {
     return { data: null as T | null, error: await response.text() };
@@ -78,12 +87,21 @@ async function restPost<T>(path: string, body: unknown) {
     return { data: null as T | null, error: "Supabase environment variables are missing." };
   }
 
-  const response = await fetch(`${base}${path}`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${base}${path}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+  } catch (error) {
+    return {
+      data: null as T | null,
+      error: error instanceof Error ? error.message : "Supabase request failed.",
+    };
+  }
 
   if (!response.ok) {
     return { data: null as T | null, error: await response.text() };

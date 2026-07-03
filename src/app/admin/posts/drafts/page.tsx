@@ -4,6 +4,8 @@ import { AdminCard } from "@/components/AdminCard";
 import { AdminShell } from "@/components/AdminShell";
 import { getPostsFromSupabase } from "@/lib/cms-repository";
 
+export const runtime = "edge";
+
 export const metadata: Metadata = {
   title: "임시 저장 글",
   robots: { index: false, follow: false },

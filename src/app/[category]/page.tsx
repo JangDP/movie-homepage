@@ -12,7 +12,17 @@ type DynamicCategoryPageProps = {
 export async function generateMetadata({ params }: DynamicCategoryPageProps) {
   const { category } = await params;
 
-  return createDynamicCategoryMetadata(category);
+  try {
+    return await createDynamicCategoryMetadata(category);
+  } catch {
+    return {
+      title: String(category),
+      robots: {
+        index: true,
+        follow: true,
+      },
+    };
+  }
 }
 
 export default async function DynamicCategoryPage({ params }: DynamicCategoryPageProps) {

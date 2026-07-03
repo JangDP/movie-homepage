@@ -111,8 +111,8 @@ export async function createDynamicCategoryMetadata(categoryId: ContentCategory)
 }
 
 export async function CategoryPage({ categoryId }: CategoryPageProps) {
-  const category = await resolveCategoryInfo(categoryId);
-  const categoryArticles = await getArticlesByCategory(categoryId);
+  const category = await resolveCategoryInfo(categoryId).catch(() => null);
+  const categoryArticles = await getArticlesByCategory(categoryId).catch(() => []);
   const label = category?.label ?? String(categoryId);
   const description = category?.description || fallbackDescription(label);
 

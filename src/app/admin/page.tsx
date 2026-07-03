@@ -7,6 +7,8 @@ import { SupabaseConnectionStatus } from "@/components/SupabaseConnectionStatus"
 import { siteConfig } from "@/data/site-config";
 import { getPostsFromSupabase } from "@/lib/cms-repository";
 
+export const runtime = "edge";
+
 export const metadata: Metadata = {
   title: "관리자",
   robots: {
