@@ -9,20 +9,13 @@ import { canManageSpellCheckRules } from "@/types/admin";
 
 type SaveState = { type: "idle" | "success" | "error"; message: string };
 
-const typeLabels: Record<SpellCheckRuleType, string> = {
-  spelling: "맞춤법",
-  spacing: "띄어쓰기",
-};
-
 export function AdminSpellCheckRulesManager() {
   const adminUser = useAdminUser();
   const canEdit = canManageSpellCheckRules(adminUser.role);
   const [rules, setRules] = useState<SpellCheckRuleRow[]>([]);
   const [wrongText, setWrongText] = useState("");
   const [suggestion, setSuggestion] = useState("");
-  const [message, setMessage] = useState("");
   const [type, setType] = useState<SpellCheckRuleType>("spelling");
-  const [sortOrder, setSortOrder] = useState(1);
   const [pending, setPending] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>({ type: "idle", message: "" });
 
@@ -49,9 +42,9 @@ export function AdminSpellCheckRulesManager() {
       .insert({
         wrong_text: trimmedWrongText,
         suggestion: trimmedSuggestion,
-        message: message.trim() || null,
+        message: null,
         type,
-        sort_order: sortOrder,
+        sort_order: getNextSortOrder(rules),
         is_active: true,
       })
       .select("*")
@@ -66,8 +59,6 @@ export function AdminSpellCheckRulesManager() {
     setRules((current) => [...current, data].sort(sortRules));
     setWrongText("");
     setSuggestion("");
-    setMessage("");
-    setSortOrder((value) => value + 1);
     setSaveState({ type: "success", message: "맞춤법 사전 규칙이 저장되었습니다." });
   }
 
@@ -125,17 +116,13 @@ export function AdminSpellCheckRulesManager() {
           {!canEdit ? <span className="rounded bg-yellow-950 px-3 py-1 text-xs font-bold text-yellow-200">읽기 전용</span> : null}
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_1fr_160px_120px]">
+        <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_1fr_160px_140px]">
           <input value={wrongText} onChange={(event) => setWrongText(event.target.value)} disabled={!canEdit} placeholder="틀린 표현 예: 어딧" className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700 disabled:opacity-50" />
           <input value={suggestion} onChange={(event) => setSuggestion(event.target.value)} disabled={!canEdit} placeholder="수정 제안 예: 어디 있" className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700 disabled:opacity-50" />
           <select value={type} onChange={(event) => setType(event.target.value as SpellCheckRuleType)} disabled={!canEdit} className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700 disabled:opacity-50">
             <option value="spelling">맞춤법</option>
             <option value="spacing">띄어쓰기</option>
           </select>
-          <input type="number" value={sortOrder} onChange={(event) => setSortOrder(Number(event.target.value))} disabled={!canEdit} className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700 disabled:opacity-50" />
-        </div>
-        <div className="mt-3 grid gap-3 md:grid-cols-[1fr_140px]">
-          <input value={message} onChange={(event) => setMessage(event.target.value)} disabled={!canEdit} placeholder="설명 예: '어딧'은 '어디 있'으로 쓰는 것이 자연스럽습니다." className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700 disabled:opacity-50" />
           <button type="button" onClick={addRule} disabled={!canEdit || pending} className="rounded bg-red-700 px-4 py-2 text-sm font-bold text-white hover:bg-red-600 disabled:opacity-50">
             {pending ? "저장 중..." : "추가"}
           </button>
@@ -146,19 +133,17 @@ export function AdminSpellCheckRulesManager() {
         <h2 className="text-lg font-black text-white">맞춤법 사전 목록</h2>
         <div className="mt-5 grid gap-3">
           {rules.map((rule) => (
-            <article key={rule.id} className="grid gap-3 rounded border border-zinc-800 bg-zinc-950 p-4 xl:grid-cols-[1fr_1fr_150px_100px_110px_90px]">
+            <article key={rule.id} className="grid gap-3 rounded border border-zinc-800 bg-zinc-950 p-4 xl:grid-cols-[1fr_1fr_150px_110px_90px]">
               <input value={rule.wrong_text} onChange={(event) => updateRule(rule, { wrong_text: event.target.value })} disabled={!canEdit} className="rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700 disabled:opacity-60" />
               <input value={rule.suggestion} onChange={(event) => updateRule(rule, { suggestion: event.target.value })} disabled={!canEdit} className="rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700 disabled:opacity-60" />
               <select value={rule.type} onChange={(event) => updateRule(rule, { type: event.target.value as SpellCheckRuleType })} disabled={!canEdit} className="rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700 disabled:opacity-60">
                 <option value="spelling">맞춤법</option>
                 <option value="spacing">띄어쓰기</option>
               </select>
-              <input type="number" value={rule.sort_order ?? 0} onChange={(event) => updateRule(rule, { sort_order: Number(event.target.value) })} disabled={!canEdit} className="rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700 disabled:opacity-60" />
               <button type="button" onClick={() => updateRule(rule, { is_active: !rule.is_active })} disabled={!canEdit} className={`rounded border px-3 py-2 text-sm font-bold disabled:opacity-50 ${rule.is_active ? "border-emerald-900 text-emerald-300" : "border-zinc-700 text-zinc-500"}`}>
                 {rule.is_active ? "활성" : "비활성"}
               </button>
               <button type="button" onClick={() => deleteRule(rule)} disabled={!canEdit} className="rounded border border-red-900 px-3 py-2 text-sm font-bold text-red-300 hover:bg-red-950/40 disabled:opacity-50">삭제</button>
-              <input value={rule.message ?? ""} onChange={(event) => updateRule(rule, { message: event.target.value || null })} disabled={!canEdit} placeholder={`${typeLabels[rule.type]} 설명`} className="xl:col-span-6 rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700 disabled:opacity-60" />
             </article>
           ))}
           {rules.length === 0 ? <p className="rounded border border-zinc-800 bg-zinc-950 p-5 text-sm text-zinc-500">저장된 맞춤법 사전 규칙이 없습니다.</p> : null}
@@ -174,4 +159,9 @@ export function AdminSpellCheckRulesManager() {
 
 function sortRules(a: SpellCheckRuleRow, b: SpellCheckRuleRow) {
   return (a.sort_order ?? 999) - (b.sort_order ?? 999) || a.wrong_text.localeCompare(b.wrong_text);
+}
+
+function getNextSortOrder(rules: SpellCheckRuleRow[]) {
+  const maxOrder = rules.reduce((max, rule) => Math.max(max, rule.sort_order ?? 0), 0);
+  return maxOrder + 10;
 }

@@ -16,6 +16,8 @@ create index if not exists spell_check_rules_active_order_idx
 
 alter table public.spell_check_rules enable row level security;
 
+grant select, insert, update, delete on table public.spell_check_rules to authenticated;
+
 drop policy if exists "Admin users can read spell check rules" on public.spell_check_rules;
 drop policy if exists "Admins can insert spell check rules" on public.spell_check_rules;
 drop policy if exists "Admins can update spell check rules" on public.spell_check_rules;
