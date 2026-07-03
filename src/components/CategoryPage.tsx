@@ -1,11 +1,7 @@
 import type { Metadata } from "next";
 
-import { AdPlaceholder } from "@/components/AdPlaceholder";
-import { ArticleGrid } from "@/components/ArticleGrid";
-import { SectionHeader } from "@/components/SectionHeader";
+import { CategoryArticlesClient } from "@/components/CategoryArticlesClient";
 import { siteConfig } from "@/data/site-config";
-import { getArticlesByCategory, getCategory } from "@/lib/content";
-import { getCategoriesFromSupabase, getNavigationMenusFromSupabase } from "@/lib/cms-repository";
 import { absoluteUrl, getSeoKeywords } from "@/lib/seo";
 import type { Category, ContentCategory } from "@/types/site";
 
@@ -14,7 +10,7 @@ type CategoryPageProps = {
 };
 
 export function createCategoryMetadata(categoryId: ContentCategory): Metadata {
-  const category = getCategory(categoryId);
+  const category = resolveStaticCategoryInfo(categoryId);
 
   return {
     title: category?.label,
@@ -47,25 +43,15 @@ function fallbackDescription(label: string) {
   return `${label} 관련 영화 이야기를 모아봅니다.`;
 }
 
-export async function resolveCategoryInfo(categoryId: ContentCategory): Promise<Category | null> {
-  const staticCategory = getCategory(categoryId);
+export function resolveStaticCategoryInfo(categoryId: ContentCategory): Category | null {
+  const staticCategory = siteConfig.categories.find((category) => category.id === categoryId);
 
   if (staticCategory) {
     return staticCategory;
   }
 
   const normalizedCategory = normalizeRoute(String(categoryId));
-  const categories = await getCategoriesFromSupabase();
-  const category = categories.find((item) => {
-    return normalizeRoute(String(item.id)) === normalizedCategory || normalizeRoute(item.href) === normalizedCategory;
-  });
-
-  if (category) {
-    return category;
-  }
-
-  const menus = await getNavigationMenusFromSupabase();
-  const menu = menus.find((item) => normalizeRoute(item.href) === normalizedCategory);
+  const menu = siteConfig.menus.find((item) => normalizeRoute(item.href) === normalizedCategory);
 
   if (!menu) {
     return null;
@@ -81,8 +67,8 @@ export async function resolveCategoryInfo(categoryId: ContentCategory): Promise<
   };
 }
 
-export async function createDynamicCategoryMetadata(categoryId: ContentCategory): Promise<Metadata> {
-  const category = await resolveCategoryInfo(categoryId);
+export function createDynamicCategoryMetadata(categoryId: ContentCategory): Metadata {
+  const category = resolveStaticCategoryInfo(categoryId);
   const label = category?.label ?? String(categoryId);
   const href = category?.href ?? `/${categoryId}`;
   const description = category?.description || fallbackDescription(label);
@@ -110,25 +96,6 @@ export async function createDynamicCategoryMetadata(categoryId: ContentCategory)
   };
 }
 
-export async function CategoryPage({ categoryId }: CategoryPageProps) {
-  const category = await resolveCategoryInfo(categoryId).catch(() => null);
-  const categoryArticles = await getArticlesByCategory(categoryId).catch(() => []);
-  const label = category?.label ?? String(categoryId);
-  const description = category?.description || fallbackDescription(label);
-
-  return (
-    <main className="min-h-screen pt-24">
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <SectionHeader
-          eyebrow={siteConfig.name}
-          title={label}
-          description={description}
-        />
-        <AdPlaceholder label={`${label} list AdSense slot`} />
-      </section>
-      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
-        <ArticleGrid articles={categoryArticles} />
-      </section>
-    </main>
-  );
+export function CategoryPage({ categoryId }: CategoryPageProps) {
+  return <CategoryArticlesClient categoryId={categoryId} initialCategory={resolveStaticCategoryInfo(categoryId)} />;
 }

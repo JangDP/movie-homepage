@@ -1,7 +1,30 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 import { testSupabaseConnection } from "@/lib/supabase";
 
-export async function SupabaseConnectionStatus() {
-  const status = await testSupabaseConnection();
+type Status = {
+  ok: boolean;
+  message: string;
+};
+
+export function SupabaseConnectionStatus() {
+  const [status, setStatus] = useState<Status>({ ok: false, message: "Supabase 연결을 확인하는 중..." });
+
+  useEffect(() => {
+    let mounted = true;
+
+    testSupabaseConnection().then((nextStatus) => {
+      if (mounted) {
+        setStatus(nextStatus);
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <div

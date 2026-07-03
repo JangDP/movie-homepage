@@ -1,6 +1,6 @@
 import { siteConfig } from "@/data/site-config";
-import { getPostsFromSupabase } from "@/lib/cms-repository";
 import { absoluteUrl, escapeXml } from "@/lib/seo";
+import { fetchPublishedPostsLite } from "@/lib/supabase-rest-lite";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -53,11 +53,11 @@ export async function GET() {
   let entries = staticEntries();
 
   try {
-    const posts = await getPostsFromSupabase({ status: "published" });
+    const posts = await fetchPublishedPostsLite();
     const postEntries = posts.map<SitemapEntry>((post) => ({
-      url: absoluteUrl(`/${post.category}/${post.slug}`),
-      lastModified: post.publishedAt
-        ? new Date(post.publishedAt).toISOString()
+      url: absoluteUrl(`/${post.category_id}/${post.slug}`),
+      lastModified: post.published_at
+        ? new Date(post.published_at).toISOString()
         : new Date().toISOString(),
       changeFrequency: "weekly",
       priority: 0.8,
