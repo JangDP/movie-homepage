@@ -107,6 +107,16 @@ a {
   color: inherit;
 }
 
+.cinescope-rich-content .cinescope-spellcheck-underline {
+  border-radius: 2px;
+  background: rgba(239, 68, 68, 0.08);
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: #ef4444;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
 .cinescope-rich-content .ProseMirror:focus {
   outline: none;
 }

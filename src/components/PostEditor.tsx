@@ -1,7 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { NodeSelection } from "@tiptap/pm/state";
+import { Extension } from "@tiptap/core";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { NodeSelection, Plugin, PluginKey } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import Link from "@tiptap/extension-link";
 import StarterKit from "@tiptap/starter-kit";
@@ -200,6 +203,96 @@ function escapeRegExp(value: string) {
 function replaceFirst(value: string, original: string, suggestion: string) {
   return value.replace(new RegExp(escapeRegExp(original)), suggestion);
 }
+
+const spellCheckHighlightPluginKey = new PluginKey<DecorationSet>("spellCheckHighlights");
+
+type SpellCheckHighlightStorage = Record<string, { issues?: SpellCheckIssue[] }>;
+
+function getSpellCheckHighlightIssues(editor: Editor) {
+  return (editor.storage as unknown as SpellCheckHighlightStorage).spellCheckHighlight?.issues ?? [];
+}
+
+function setSpellCheckHighlightIssues(editor: Editor, issues: SpellCheckIssue[]) {
+  const storage = editor.storage as unknown as SpellCheckHighlightStorage;
+  storage.spellCheckHighlight = {
+    ...storage.spellCheckHighlight,
+    issues,
+  };
+}
+
+function createSpellCheckDecorations(doc: ProseMirrorNode, issues: SpellCheckIssue[]) {
+  const terms = Array.from(
+    new Set(
+      issues
+        .filter((issue) => issue.field === "body")
+        .map((issue) => issue.original.trim())
+        .filter(Boolean),
+    ),
+  );
+
+  if (terms.length === 0) {
+    return DecorationSet.empty;
+  }
+
+  const decorations: Decoration[] = [];
+
+  doc.descendants((node, position) => {
+    if (!node.isText || !node.text) {
+      return;
+    }
+
+    terms.forEach((term) => {
+      let index = node.text?.indexOf(term) ?? -1;
+
+      while (index >= 0) {
+        decorations.push(
+          Decoration.inline(position + index, position + index + term.length, {
+            class: "cinescope-spellcheck-underline",
+            "data-spellcheck-error": term,
+          }),
+        );
+        index = node.text?.indexOf(term, index + term.length) ?? -1;
+      }
+    });
+  });
+
+  return DecorationSet.create(doc, decorations);
+}
+
+const SpellCheckHighlight = Extension.create({
+  name: "spellCheckHighlight",
+
+  addStorage() {
+    return {
+      issues: [] as SpellCheckIssue[],
+    };
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: spellCheckHighlightPluginKey,
+        state: {
+          init: (_, state) => createSpellCheckDecorations(state.doc, getSpellCheckHighlightIssues(this.editor)),
+          apply: (transaction, previousDecorations, _oldState, newState) => {
+            const meta = transaction.getMeta(spellCheckHighlightPluginKey);
+
+            if (meta?.refresh || transaction.docChanged) {
+              return createSpellCheckDecorations(newState.doc, getSpellCheckHighlightIssues(this.editor));
+            }
+
+            return previousDecorations.map(transaction.mapping, transaction.doc);
+          },
+        },
+        props: {
+          decorations(state) {
+            return spellCheckHighlightPluginKey.getState(state) ?? DecorationSet.empty;
+          },
+        },
+      }),
+    ];
+  },
+});
 
 function HighlightedContext({ issue }: { issue: SpellCheckIssue }) {
   const index = issue.context.indexOf(issue.original);
@@ -670,6 +763,7 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
         heading: { levels: [1, 2, 3, 4] },
       }),
       Underline,
+      SpellCheckHighlight,
       Link.configure({
         openOnClick: false,
         autolink: true,
@@ -723,6 +817,15 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
       setSelectedImage(getSelectedImage(currentEditor));
     },
   });
+
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    setSpellCheckHighlightIssues(editor, spellCheckResult?.issues.filter((issue) => issue.field === "body") ?? []);
+    editor.view.dispatch(editor.state.tr.setMeta(spellCheckHighlightPluginKey, { refresh: true }));
+  }, [editor, spellCheckResult]);
 
   useEffect(() => {
     if (!editor || !existingPost) {
