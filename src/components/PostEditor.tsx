@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, type KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { Extension } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { NodeSelection, Plugin, PluginKey } from "@tiptap/pm/state";
@@ -202,6 +202,32 @@ function escapeRegExp(value: string) {
 
 function replaceFirst(value: string, original: string, suggestion: string) {
   return value.replace(new RegExp(escapeRegExp(original)), suggestion);
+}
+
+function normalizeTag(value: string) {
+  return value
+    .replace(/^#+/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function uniqueTags(values: string[]) {
+  const seen = new Set<string>();
+  const tags: string[] = [];
+
+  values.forEach((value) => {
+    const tag = normalizeTag(value);
+    const key = tag.toLowerCase();
+
+    if (!tag || seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    tags.push(tag);
+  });
+
+  return tags;
 }
 
 const spellCheckHighlightPluginKey = new PluginKey<DecorationSet>("spellCheckHighlights");
@@ -638,6 +664,8 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
   const [seoTitleValue, setSeoTitleValue] = useState("");
   const [metaDescriptionValue, setMetaDescriptionValue] = useState("");
   const [availableTags, setAvailableTags] = useState<TagRow[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
   const [existingPost, setExistingPost] = useState<ExistingPostRow | null>(null);
   const [loadingPost, setLoadingPost] = useState(Boolean(postId));
@@ -708,6 +736,7 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
       setExcerptValue(post.excerpt ?? "");
       setSeoTitleValue(post.seo_title ?? "");
       setMetaDescriptionValue(post.meta_description ?? "");
+      setSelectedTags(uniqueTags(post.tags ?? []));
       setExistingThumbnailUrl(post.thumbnail_url ?? post.og_image_url ?? null);
       setPreviewHtml(html);
       setBodyText("");
@@ -876,6 +905,38 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
     setPickerTarget(null);
   }
 
+  function addTagsFromValue(value: string) {
+    const nextTags = value
+      .split(",")
+      .map((tag) => normalizeTag(tag))
+      .filter(Boolean);
+
+    if (nextTags.length === 0) {
+      return;
+    }
+
+    setSelectedTags((current) => uniqueTags([...current, ...nextTags]));
+    setTagInput("");
+  }
+
+  function removeTag(tagToRemove: string) {
+    setSelectedTags((current) => current.filter((tag) => tag !== tagToRemove));
+  }
+
+  function handleTagKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter" || event.key === "," || event.key === "Tab") {
+      if (tagInput.trim()) {
+        event.preventDefault();
+        addTagsFromValue(tagInput);
+      }
+      return;
+    }
+
+    if (event.key === "Backspace" && !tagInput && selectedTags.length > 0) {
+      setSelectedTags((current) => current.slice(0, -1));
+    }
+  }
+
   async function runSpellCheck() {
     if (!editor) {
       setSaveState({ type: "error", message: "에디터가 아직 준비되지 않았습니다." });
@@ -983,10 +1044,7 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
     const author = getValue(formData, "author") || "편집부";
     const seoTitle = getValue(formData, "seoTitle");
     const metaDescription = getValue(formData, "metaDescription");
-    const tags = getValue(formData, "tags")
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean);
+    const tags = uniqueTags([...selectedTags, ...tagInput.split(",")]);
     const publishedAt = getValue(formData, "publishedAt") || new Date().toISOString().slice(0, 10);
     const slug = postId ? slugify(inputSlug || title) : await getUniqueSlug(inputSlug || title);
     const html = editor.getHTML();
@@ -1056,6 +1114,8 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
           ? "발행 완료"
           : "임시 저장 완료",
     });
+    setSelectedTags(tags);
+    setTagInput("");
     if (postId) {
       setExistingPost({
         ...payload,
@@ -1076,6 +1136,8 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
     setExcerptValue("");
     setSeoTitleValue("");
     setMetaDescriptionValue("");
+    setSelectedTags([]);
+    setTagInput("");
     setBodyText("");
     setFeaturedImage(null);
     setSelectedImage(null);
@@ -1183,22 +1245,63 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
                 defaultValue={existingPost?.category_id ?? defaultCategory}
                 options={siteConfig.categories.map((category) => ({ label: category.label, value: category.id }))}
               />
-              <label className="block text-sm font-semibold text-zinc-300">
-                태그
-                <input name="tags" list="cinescope-tags" defaultValue={existingPost?.tags?.join(", ") ?? ""} placeholder="리뷰, OTT, 액션" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
-                <datalist id="cinescope-tags">
-                  {availableTags.map((tag) => (
-                    <option key={tag.id} value={tag.name} />
-                  ))}
-                </datalist>
-                {availableTags.length > 0 ? (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {availableTags.slice(0, 8).map((tag) => (
-                      <span key={tag.id} className="rounded bg-zinc-900 px-2 py-1 text-[11px] text-zinc-500">#{tag.name}</span>
+              <div className="block text-sm font-semibold text-zinc-300">
+                <label htmlFor="post-tags-input">태그</label>
+                <input type="hidden" name="tags" value={uniqueTags([...selectedTags, ...tagInput.split(",")]).join(", ")} />
+                <input
+                  id="post-tags-input"
+                  value={tagInput}
+                  onChange={(event) => setTagInput(event.target.value)}
+                  onKeyDown={handleTagKeyDown}
+                  onBlur={() => addTagsFromValue(tagInput)}
+                  placeholder="태그 입력 후 Enter 예: 슈퍼 히어로"
+                  className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700"
+                />
+                <p className="mt-1 text-xs font-medium text-zinc-500">Enter, 쉼표, Tab으로 태그를 추가합니다.</p>
+
+                {selectedTags.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {selectedTags.map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => removeTag(tag)}
+                        className="rounded bg-red-950/50 px-2 py-1 text-[11px] font-bold text-red-100 hover:bg-red-900"
+                        aria-label={`${tag} 태그 삭제`}
+                      >
+                        #{tag} <span className="text-red-300">x</span>
+                      </button>
                     ))}
                   </div>
+                ) : (
+                  <p className="mt-2 rounded border border-zinc-900 bg-black/40 px-3 py-2 text-xs font-medium text-zinc-600">
+                    아직 추가된 태그가 없습니다.
+                  </p>
+                )}
+
+                {availableTags.length > 0 ? (
+                  <div className="mt-3">
+                    <p className="text-xs font-bold text-zinc-500">추천 태그</p>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {availableTags.slice(0, 10).map((tag) => {
+                        const selected = selectedTags.some((selectedTag) => selectedTag.toLowerCase() === tag.name.toLowerCase());
+
+                        return (
+                          <button
+                            key={tag.id}
+                            type="button"
+                            disabled={selected}
+                            onClick={() => addTagsFromValue(tag.name)}
+                            className="rounded bg-zinc-900 px-2 py-1 text-[11px] font-bold text-zinc-400 hover:bg-zinc-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            #{tag.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 ) : null}
-              </label>
+              </div>
               <label className="block text-sm font-semibold text-zinc-300">
                 요약 설명
                 <textarea name="excerpt" value={excerptValue} onChange={(event) => setExcerptValue(event.target.value)} rows={3} spellCheck placeholder="목록과 SEO에 표시될 짧은 설명" className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
