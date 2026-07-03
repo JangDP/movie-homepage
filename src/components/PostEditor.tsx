@@ -1044,7 +1044,7 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
     const author = getValue(formData, "author") || "편집부";
     const seoTitle = getValue(formData, "seoTitle");
     const metaDescription = getValue(formData, "metaDescription");
-    const tags = uniqueTags([...selectedTags, ...tagInput.split(",")]);
+    const tags = uniqueTags(selectedTags);
     const publishedAt = getValue(formData, "publishedAt") || new Date().toISOString().slice(0, 10);
     const slug = postId ? slugify(inputSlug || title) : await getUniqueSlug(inputSlug || title);
     const html = editor.getHTML();
@@ -1247,13 +1247,12 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
               />
               <div className="block text-sm font-semibold text-zinc-300">
                 <label htmlFor="post-tags-input">태그</label>
-                <input type="hidden" name="tags" value={uniqueTags([...selectedTags, ...tagInput.split(",")]).join(", ")} />
+                <input type="hidden" name="tags" value={selectedTags.join(", ")} />
                 <input
                   id="post-tags-input"
                   value={tagInput}
                   onChange={(event) => setTagInput(event.target.value)}
                   onKeyDown={handleTagKeyDown}
-                  onBlur={() => addTagsFromValue(tagInput)}
                   placeholder="태그 입력 후 Enter 예: 슈퍼 히어로"
                   className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700"
                 />
