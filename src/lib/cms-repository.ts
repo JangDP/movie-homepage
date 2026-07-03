@@ -1,6 +1,6 @@
 import { siteConfig } from "@/data/site-config";
 import type { Database } from "@/types/database";
-import type { Category, ContentCategory, Post, SiteConfig } from "@/types/site";
+import type { Category, ContentCategory, NavItem, Post, SiteConfig } from "@/types/site";
 
 type PostRow = Database["public"]["Tables"]["posts"]["Row"];
 type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
@@ -173,6 +173,20 @@ export async function getCategoriesFromSupabase(): Promise<Category[]> {
   }
 
   return data.map(mapCategory);
+}
+
+export async function getNavigationMenusFromSupabase(): Promise<NavItem[]> {
+  const { data, error } = await restGet<Array<{ value: NavItem[] }>>(
+    `/site_settings${queryString({ select: "value", key: "eq.navigation_menus", limit: 1 })}`,
+  );
+
+  if (error || !Array.isArray(data?.[0]?.value)) {
+    return siteConfig.menus;
+  }
+
+  return data[0].value
+    .filter((item) => item.active !== false)
+    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 }
 
 export async function getPostsFromSupabase(options?: {
