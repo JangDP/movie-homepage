@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { AdminCard } from "@/components/AdminCard";
 import { AdminField } from "@/components/AdminField";
+import { AdminPopupAdManager } from "@/components/AdminPopupAdManager";
 import { MediaPicker } from "@/components/MediaPicker";
 import { siteConfig } from "@/data/site-config";
 import type { MediaFile } from "@/types/cms";
@@ -23,6 +24,8 @@ export function AdminBannerEditor() {
 
   return (
     <div className="grid gap-5">
+      <AdminPopupAdManager />
+
       <AdminCard title="메인 배너 편집">
         <form
           className="grid gap-5"
