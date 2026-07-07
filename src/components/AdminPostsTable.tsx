@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useAdminUser } from "@/components/AdminAuthContext";
 import { supabase } from "@/lib/supabase";
 import { getCategory } from "@/lib/content";
+import { formatPostDate } from "@/lib/date-format";
 import { canDeletePosts } from "@/types/admin";
 import type { Post } from "@/types/site";
 
@@ -165,7 +166,7 @@ export function AdminPostsTable({ posts = [] }: AdminPostsTableProps) {
                     <span className="text-zinc-700">-</span>
                   )}
                 </td>
-                <td className="py-4 pr-4">{post.publishedAt}</td>
+                <td className="py-4 pr-4">{formatPostDate(post.publishedAt)}</td>
                 <td className="py-4 pr-4 text-zinc-500">{post.slug}</td>
                 <td className="py-4">
                   <div className="flex gap-2">

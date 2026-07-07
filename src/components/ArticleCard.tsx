@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { siteConfig } from "@/data/site-config";
 import { getCategory } from "@/lib/content";
+import { formatPostDate, formatRelativeTime } from "@/lib/date-format";
 import type { Article } from "@/types/site";
 
 type ArticleCardProps = {
@@ -13,6 +14,7 @@ type ArticleCardProps = {
 export function ArticleCard({ article, priority = false }: ArticleCardProps) {
   const category = getCategory(article.category);
   const imageSrc = article.image || siteConfig.appearance.heroImage;
+  const relativeTime = formatRelativeTime(article.publishedAt);
 
   return (
     <article className="group overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/20 transition hover:-translate-y-1 hover:border-red-700/70">
@@ -33,7 +35,13 @@ export function ArticleCard({ article, priority = false }: ArticleCardProps) {
         </div>
         <div className="space-y-3 p-5">
           <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-            <span>{article.publishedAt}</span>
+            <span>{formatPostDate(article.publishedAt)}</span>
+            {relativeTime ? (
+              <>
+                <span aria-hidden="true">/</span>
+                <span>{relativeTime}</span>
+              </>
+            ) : null}
             <span aria-hidden="true">/</span>
             <span>{article.author}</span>
           </div>

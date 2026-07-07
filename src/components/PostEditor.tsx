@@ -96,6 +96,34 @@ function slugify(value: string) {
   return normalized || `post-${new Date().toISOString().slice(0, 10)}`;
 }
 
+function getLocalDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function toDateInputValue(value?: string | null) {
+  return value ? value.slice(0, 10) : "";
+}
+
+function createPublishedAtValue(inputValue: string, existingValue?: string | null) {
+  if (!inputValue) {
+    return existingValue || new Date().toISOString();
+  }
+
+  if (existingValue?.startsWith(inputValue)) {
+    return existingValue;
+  }
+
+  if (inputValue === getLocalDateInputValue()) {
+    return new Date().toISOString();
+  }
+
+  return `${inputValue}T00:00:00+09:00`;
+}
+
 async function getUniqueSlug(baseSlug: string) {
   const base = slugify(baseSlug);
 
@@ -1136,8 +1164,7 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
     const seoTitle = getValue(formData, "seoTitle") || seoTitleValue;
     const metaDescription = getValue(formData, "metaDescription") || metaDescriptionValue;
     const tags = uniqueTags(selectedTags);
-    const publishedAt =
-      getValue(formData, "publishedAt") || existingPost?.published_at || new Date().toISOString().slice(0, 10);
+    const publishedAt = createPublishedAtValue(getValue(formData, "publishedAt"), existingPost?.published_at);
     const html = editor!.getHTML();
     const json = editor!.getJSON();
     const text = editor!.getText().trim();
@@ -1304,7 +1331,7 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
     const seoTitle = getValue(formData, "seoTitle");
     const metaDescription = getValue(formData, "metaDescription");
     const tags = uniqueTags(selectedTags);
-    const publishedAt = getValue(formData, "publishedAt") || new Date().toISOString().slice(0, 10);
+    const publishedAt = createPublishedAtValue(getValue(formData, "publishedAt"), existingPost?.published_at);
     const slug = postId ? slugify(inputSlug || title) : await getUniqueSlug(inputSlug || title);
     const html = editor!.getHTML();
     const json = editor!.getJSON();
@@ -1652,7 +1679,7 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
               </label>
               <label className="block text-sm font-semibold text-zinc-300">
                 발행일
-                <input name="publishedAt" type="date" defaultValue={existingPost?.published_at ?? ""} className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
+                <input name="publishedAt" type="date" defaultValue={toDateInputValue(existingPost?.published_at)} className="mt-2 w-full rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700" />
               </label>
               <label className="flex items-center gap-2 text-sm font-semibold text-zinc-300">
                 <input type="checkbox" name="featured" defaultChecked={Boolean(existingPost?.featured)} className="size-4 accent-red-700" />

@@ -12,6 +12,7 @@ import { PostReactions } from "@/components/PostReactions";
 import { PostViewCounter } from "@/components/PostViewCounter";
 import { siteConfig } from "@/data/site-config";
 import { getCategory } from "@/lib/content";
+import { formatPostDate, formatRelativeTime } from "@/lib/date-format";
 import { supabase } from "@/lib/supabase";
 import type { Comment, ReactionCounts } from "@/lib/cms-repository";
 import type { Database } from "@/types/database";
@@ -79,24 +80,6 @@ function countReactions(rows: Array<{ reaction_type: ReactionType }>) {
     },
     { ...emptyReactionCounts },
   );
-}
-
-function formatPostDate(value: string) {
-  if (!value) {
-    return "-";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
 }
 
 function PostListOverview({
@@ -179,7 +162,8 @@ function PostListOverview({
                       </span>
                       <span className="text-xs text-zinc-500 md:text-right">
                         <span className="md:hidden">작성일 </span>
-                        {formatPostDate(item.publishedAt)}
+                        <span className="block text-zinc-400">{formatRelativeTime(item.publishedAt)}</span>
+                        <span className="block text-[11px] text-zinc-600">{formatPostDate(item.publishedAt)}</span>
                       </span>
                     </Link>
                   );
@@ -479,7 +463,13 @@ export function PostDetailClient({ category, slug }: PostDetailClientProps) {
             <div className="mt-5 flex flex-wrap gap-2 text-xs text-zinc-400">
               <span>{post.author}</span>
               <span>/</span>
-              <span>{post.publishedAt}</span>
+              <span>{formatPostDate(post.publishedAt)}</span>
+              {formatRelativeTime(post.publishedAt) ? (
+                <>
+                  <span>/</span>
+                  <span>{formatRelativeTime(post.publishedAt)}</span>
+                </>
+              ) : null}
               <span>/</span>
               <PostViewCounter
                 postId={post.id}
