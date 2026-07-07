@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, type KeyboardEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Extension } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { NodeSelection, Plugin, PluginKey } from "@tiptap/pm/state";
@@ -648,12 +648,17 @@ function ImageEditPanel({
 
 export function PostEditor({ postId }: PostEditorProps = {}) {
   const defaultCategory = siteConfig.categories[0]?.id ?? "news";
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const autoSaveInFlightRef = useRef(false);
+  const lastAutoSavedSignatureRef = useRef("");
+  const [activePostId, setActivePostId] = useState<string | null>(postId ?? null);
   const [title, setTitle] = useState("");
   const [featuredImage, setFeaturedImage] = useState<MediaFile | null>(null);
   const [existingThumbnailUrl, setExistingThumbnailUrl] = useState<string | null>(null);
   const [pickerTarget, setPickerTarget] = useState<"featured" | "body" | null>(null);
   const [pendingMode, setPendingMode] = useState<SaveMode | null>(null);
   const [saveState, setSaveState] = useState<SaveState>({ type: "idle", message: "" });
+  const [autoSaveState, setAutoSaveState] = useState<SaveState>({ type: "idle", message: "" });
   const [previewHtml, setPreviewHtml] = useState(emptyContent);
   const [bodyText, setBodyText] = useState("");
   const [slugValue, setSlugValue] = useState("");
@@ -728,6 +733,7 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
       const post = data as ExistingPostRow;
       const html = post.body || emptyContent;
 
+      setActivePostId(postId ?? null);
       setExistingPost(post);
       setTitle(post.title);
       setSlugValue(post.slug);
@@ -866,6 +872,74 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
     setPreviewHtml(html);
     setBodyText(editor.getText());
   }, [editor, existingPost]);
+
+  useEffect(() => {
+    if (!editor || loadingPost || pendingMode || !isSupabaseReady) {
+      return;
+    }
+
+    if (existingPost?.status === "published" || existingPost?.status === "deleted") {
+      return;
+    }
+
+    if (!title.trim()) {
+      setAutoSaveState({ type: "idle", message: "제목을 입력하면 자동 임시 저장됩니다." });
+      return;
+    }
+
+    const signature = getAutoSaveSignature();
+
+    if (signature === lastAutoSavedSignatureRef.current) {
+      return;
+    }
+
+    setAutoSaveState({ type: "idle", message: "자동 임시 저장 대기 중..." });
+
+    const timer = window.setTimeout(async () => {
+      if (autoSaveInFlightRef.current) {
+        return;
+      }
+
+      autoSaveInFlightRef.current = true;
+      setAutoSaveState({ type: "idle", message: "자동 임시 저장 중..." });
+
+      const result = await persistPost("draft", { silent: true });
+      autoSaveInFlightRef.current = false;
+
+      if (result.ok) {
+        lastAutoSavedSignatureRef.current = signature;
+        setAutoSaveState({
+          type: "success",
+          message: `자동 임시 저장됨 ${new Intl.DateTimeFormat("ko-KR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }).format(new Date())}`,
+        });
+        return;
+      }
+
+      setAutoSaveState({ type: "error", message: `자동 임시 저장 실패: ${result.message}` });
+    }, 5000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    editor,
+    loadingPost,
+    pendingMode,
+    isSupabaseReady,
+    existingPost?.status,
+    title,
+    slugValue,
+    excerptValue,
+    seoTitleValue,
+    metaDescriptionValue,
+    selectedTags,
+    previewHtml,
+    featuredImage,
+    existingThumbnailUrl,
+  ]);
 
   function selectMedia(asset: MediaFile) {
     if (pickerTarget === "featured") {
@@ -1022,8 +1096,193 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
     });
   }
 
+  function getAutoSaveSignature() {
+    return JSON.stringify({
+      title: title.trim(),
+      slug: slugValue,
+      excerpt: excerptValue,
+      seoTitle: seoTitleValue,
+      metaDescription: metaDescriptionValue,
+      tags: selectedTags.join("|"),
+      body: previewHtml,
+      featuredImage: featuredImage?.webpUrl ?? existingThumbnailUrl ?? "",
+    });
+  }
+
+  async function persistPost(mode: SaveMode, options: { silent?: boolean } = {}) {
+    const silent = options.silent ?? false;
+
+    if (!supabase) {
+      const message = "Supabase 환경변수가 없어 저장할 수 없습니다.";
+      if (!silent) {
+        setSaveState({ type: "error", message });
+      }
+      return { ok: false, message };
+    }
+
+    if (!editor) {
+      const message = "에디터가 아직 준비되지 않았습니다.";
+      if (!silent) {
+        setSaveState({ type: "error", message });
+      }
+      return { ok: false, message };
+    }
+
+    const formData = formRef.current ? new FormData(formRef.current) : new FormData();
+    const inputSlug = getValue(formData, "slug");
+    const category = getValue(formData, "category") || existingPost?.category_id || defaultCategory;
+    const excerpt = getValue(formData, "excerpt") || excerptValue;
+    const author = getValue(formData, "author") || existingPost?.author || "편집부";
+    const seoTitle = getValue(formData, "seoTitle") || seoTitleValue;
+    const metaDescription = getValue(formData, "metaDescription") || metaDescriptionValue;
+    const tags = uniqueTags(selectedTags);
+    const publishedAt =
+      getValue(formData, "publishedAt") || existingPost?.published_at || new Date().toISOString().slice(0, 10);
+    const html = editor!.getHTML();
+    const json = editor!.getJSON();
+    const text = editor!.getText().trim();
+    const slugBase = inputSlug || slugValue || title;
+    const slug = activePostId ? slugify(slugBase) : await getUniqueSlug(slugBase);
+
+    if (!title.trim()) {
+      const message = "제목은 필수입니다. 제목을 입력하면 자동 임시 저장이 시작됩니다.";
+      if (!silent) {
+        setSaveState({ type: "error", message });
+      }
+      return { ok: false, message };
+    }
+
+    if (mode === "published" && (!slug || !category || !text)) {
+      const message = "발행하려면 제목, slug, 카테고리, 본문을 모두 입력해야 합니다.";
+      if (!silent) {
+        setSaveState({ type: "error", message });
+      }
+      return { ok: false, message };
+    }
+
+    if (!silent) {
+      setPendingMode(mode);
+      setSaveState({ type: "idle", message: "" });
+    }
+
+    const imageUrl = featuredImage?.webpUrl ?? existingThumbnailUrl ?? getFirstImageFromHtml(html);
+    const summary = excerpt || text.slice(0, 140);
+    const payload = {
+      title: title.trim(),
+      slug,
+      category_id: category,
+      body: html,
+      content_blocks: json,
+      excerpt: summary,
+      author,
+      published_at: publishedAt,
+      read_time: null,
+      thumbnail_url: imageUrl,
+      image_alt: featuredImage?.alt ?? title,
+      tags,
+      status: mode,
+      featured: formData.get("featured") === "on",
+      seo_title: seoTitle || title,
+      meta_description: metaDescription || summary,
+      og_image_url: imageUrl,
+    };
+
+    let savedPostId = activePostId;
+    let saveError: { message: string } | null = null;
+
+    if (activePostId) {
+      const result = await supabase.from("posts").update(payload).eq("id", activePostId);
+      saveError = result.error;
+    } else {
+      const result = await supabase.from("posts").insert(payload).select("id").single();
+      saveError = result.error;
+      savedPostId = (result.data as { id?: string } | null)?.id ?? null;
+    }
+
+    if (saveError && saveError.message.toLowerCase().includes("content_blocks")) {
+      const { content_blocks: _contentBlocks, ...fallbackPayload } = payload;
+
+      if (activePostId) {
+        const fallbackResult = await supabase.from("posts").update(fallbackPayload).eq("id", activePostId);
+        saveError = fallbackResult.error;
+      } else {
+        const fallbackResult = await supabase.from("posts").insert(fallbackPayload).select("id").single();
+        saveError = fallbackResult.error;
+        savedPostId = (fallbackResult.data as { id?: string } | null)?.id ?? null;
+      }
+    }
+
+    if (!silent) {
+      setPendingMode(null);
+    }
+
+    if (saveError) {
+      const message = `저장 실패: ${saveError.message}`;
+      if (!silent) {
+        setSaveState({ type: "error", message });
+      }
+      return { ok: false, message };
+    }
+
+    if (savedPostId) {
+      setActivePostId(savedPostId);
+    }
+    setSlugValue(slug);
+    setSelectedTags(tags);
+    setTagInput("");
+
+    if (mode === "draft") {
+      lastAutoSavedSignatureRef.current = getAutoSaveSignature();
+    }
+
+    if (!silent) {
+      setSaveState({
+        type: "success",
+        message: mode === "published" ? "발행 완료" : "임시 저장 완료. 이 화면에서 계속 이어서 작성할 수 있습니다.",
+      });
+    }
+
+    if (!silent && (postId || mode === "draft")) {
+      setExistingPost({
+        ...payload,
+        body: html,
+        content_blocks: json,
+        category_id: category,
+        thumbnail_url: imageUrl ?? null,
+        image_alt: featuredImage?.alt ?? title,
+        created_at: null,
+      } as unknown as ExistingPostRow);
+    }
+
+    if (postId || mode === "draft") {
+      return { ok: true, message: "저장 완료" };
+    }
+
+    formRef.current?.reset();
+    setActivePostId(null);
+    setTitle("");
+    setSlugValue("");
+    setSlugManuallyEdited(false);
+    setAdvancedOpen(false);
+    setExcerptValue("");
+    setSeoTitleValue("");
+    setMetaDescriptionValue("");
+    setSelectedTags([]);
+    setTagInput("");
+    setBodyText("");
+    setFeaturedImage(null);
+    setSelectedImage(null);
+    editor!.commands.setContent(emptyContent);
+    setPreviewHtml(emptyContent);
+    lastAutoSavedSignatureRef.current = "";
+
+    return { ok: true, message: "저장 완료" };
+  }
+
   async function savePost(event: FormEvent<HTMLFormElement>, mode: SaveMode) {
     event.preventDefault();
+    await persistPost(mode);
+    return;
     setSaveState({ type: "idle", message: "" });
 
     if (!supabase) {
@@ -1047,9 +1306,9 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
     const tags = uniqueTags(selectedTags);
     const publishedAt = getValue(formData, "publishedAt") || new Date().toISOString().slice(0, 10);
     const slug = postId ? slugify(inputSlug || title) : await getUniqueSlug(inputSlug || title);
-    const html = editor.getHTML();
-    const json = editor.getJSON();
-    const text = editor.getText().trim();
+    const html = editor!.getHTML();
+    const json = editor!.getJSON();
+    const text = editor!.getText().trim();
 
     if (!title.trim()) {
       setSaveState({ type: "error", message: "제목은 필수입니다. 제목만 입력해도 임시 저장할 수 있습니다." });
@@ -1086,21 +1345,21 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
     };
 
     let { error } = postId
-      ? await supabase.from("posts").update(payload).eq("id", postId)
-      : await supabase.from("posts").insert(payload);
+      ? await supabase!.from("posts").update(payload).eq("id", postId)
+      : await supabase!.from("posts").insert(payload);
 
-    if (error && error.message.toLowerCase().includes("content_blocks")) {
+    if (error?.message.toLowerCase().includes("content_blocks")) {
       const { content_blocks: _contentBlocks, ...fallbackPayload } = payload;
       const fallbackResult = postId
-        ? await supabase.from("posts").update(fallbackPayload).eq("id", postId)
-        : await supabase.from("posts").insert(fallbackPayload);
+        ? await supabase!.from("posts").update(fallbackPayload).eq("id", postId)
+        : await supabase!.from("posts").insert(fallbackPayload);
       error = fallbackResult.error;
     }
 
     setPendingMode(null);
 
     if (error) {
-      setSaveState({ type: "error", message: `저장 실패: ${error.message}` });
+      setSaveState({ type: "error", message: `저장 실패: ${error?.message ?? "알 수 없는 오류"}` });
       return;
     }
 
@@ -1141,7 +1400,7 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
     setBodyText("");
     setFeaturedImage(null);
     setSelectedImage(null);
-    editor.commands.setContent(emptyContent);
+    editor!.commands.setContent(emptyContent);
     setPreviewHtml(emptyContent);
   }
 
@@ -1155,6 +1414,7 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
 
   return (
     <form
+      ref={formRef}
       className="grid gap-5"
       onSubmit={(event) => {
         const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
@@ -1164,7 +1424,7 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
       <div className="sticky top-0 z-30 -mx-4 border-b border-zinc-800 bg-black/95 px-4 py-3 backdrop-blur">
         <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between">
           <EditorToolbar editor={editor} onOpenMedia={() => setPickerTarget("body")} />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => void runSpellCheck()}
@@ -1179,6 +1439,19 @@ export function PostEditor({ postId }: PostEditorProps = {}) {
             <button type="submit" name="intent" value="published" disabled={pendingMode !== null || !isSupabaseReady} className="min-h-10 rounded bg-red-700 px-4 text-sm font-bold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50">
               {pendingMode === "published" ? "발행 중..." : "발행하기"}
             </button>
+            {autoSaveState.message ? (
+              <span
+                className={`text-xs font-bold ${
+                  autoSaveState.type === "error"
+                    ? "text-red-300"
+                    : autoSaveState.type === "success"
+                      ? "text-emerald-300"
+                      : "text-zinc-500"
+                }`}
+              >
+                {autoSaveState.message}
+              </span>
+            ) : null}
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
@@ -60,9 +61,17 @@ export function AdminDraftPostsList() {
   return (
     <div className="grid gap-3">
       {drafts.map((post) => (
-        <div key={post.id} className="rounded border border-zinc-800 bg-zinc-950 p-4">
-          <p className="text-sm font-bold text-white">{post.title}</p>
-          <p className="mt-2 text-xs text-zinc-500">{post.excerpt}</p>
+        <div key={post.id} className="flex flex-col gap-3 rounded border border-zinc-800 bg-zinc-950 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold text-white">{post.title}</p>
+            <p className="mt-2 text-xs text-zinc-500">{post.excerpt}</p>
+          </div>
+          <Link
+            href={`/admin/posts/${post.id}/edit`}
+            className="inline-flex min-h-9 items-center justify-center rounded border border-zinc-700 px-3 text-xs font-bold text-zinc-200 transition hover:border-red-700 hover:text-white"
+          >
+            수정
+          </Link>
         </div>
       ))}
       {drafts.length === 0 ? <p className="text-sm text-zinc-500">임시 저장 글이 없습니다.</p> : null}
