@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useAdminUser } from "@/components/AdminAuthContext";
 import { MediaPicker } from "@/components/MediaPicker";
 import { siteConfig } from "@/data/site-config";
+import { themes } from "@/data/themes";
 import { APPEARANCE_SETTINGS_KEY, fetchAppearanceSettings, persistAppearanceToBrowser } from "@/lib/appearance";
 import { supabase } from "@/lib/supabase";
 import { canManageAppearance } from "@/types/admin";
@@ -28,6 +29,7 @@ export function AdminAppearanceManager() {
   const [pending, setPending] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<PickerTarget>(null);
   const [saveState, setSaveState] = useState<SaveState>({ type: "idle", message: "" });
+  const selectedTheme = themes.find((theme) => theme.id === appearance.themeId) ?? themes[0];
 
   useEffect(() => {
     fetchAppearanceSettings().then(setAppearance);
@@ -42,6 +44,16 @@ export function AdminAppearanceManager() {
       ...current,
       visibleSections: { ...current.visibleSections, [key]: value },
     }));
+  }
+
+  function selectTheme(themeId: string) {
+    const theme = themes.find((item) => item.id === themeId);
+
+    if (!theme) {
+      return;
+    }
+
+    updateAppearance({ themeId: theme.id, accentColor: theme.accentColor });
   }
 
   function selectMedia(asset: MediaFile) {
@@ -79,6 +91,43 @@ export function AdminAppearanceManager() {
       {!canEdit ? (
         <p className="rounded border border-yellow-900 bg-yellow-950/30 p-3 text-sm text-yellow-200">editor 권한은 꾸미기 설정을 수정할 수 없습니다.</p>
       ) : null}
+
+      <section id="theme" className="rounded-lg border border-zinc-800 bg-black/50 p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-lg font-black text-white">테마</h2>
+            <p className="mt-1 text-sm text-zinc-500">사이트 분위기를 선택하면 포인트 컬러가 함께 적용됩니다.</p>
+          </div>
+          <p className="text-xs font-bold text-red-400">현재 테마: {selectedTheme.name}</p>
+        </div>
+        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {themes.map((theme) => {
+            const active = appearance.themeId === theme.id;
+
+            return (
+              <button
+                key={theme.id}
+                type="button"
+                onClick={() => selectTheme(theme.id)}
+                disabled={!canEdit}
+                className={`overflow-hidden rounded-lg border text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                  active ? "border-red-600 bg-red-950/20" : "border-zinc-800 bg-zinc-950 hover:border-zinc-600"
+                }`}
+              >
+                <span className={`block h-20 bg-gradient-to-br ${theme.previewClassName}`} />
+                <span className="block p-4">
+                  <span className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-black text-white">{theme.name}</span>
+                    <span className="size-4 rounded-full border border-white/20" style={{ backgroundColor: theme.accentColor }} />
+                  </span>
+                  <span className="mt-2 block text-xs leading-5 text-zinc-500">{theme.description}</span>
+                  {active ? <span className="mt-3 inline-flex rounded bg-red-700 px-2 py-1 text-[11px] font-black text-white">선택됨</span> : null}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       <section className="rounded-lg border border-zinc-800 bg-black/50 p-5">
         <h2 className="text-lg font-black text-white">로고/색상</h2>

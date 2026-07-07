@@ -76,6 +76,7 @@ export const siteConfig: SiteConfig = {
     imageAlt: "어두운 영화관 좌석과 스크린",
   },
   appearance: {
+    themeId: "cinema",
     logoText: "시네마틱 유니버스",
     heroImage:
       "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1800&q=80",

@@ -37,6 +37,7 @@ export type FooterInfo = {
 };
 
 export type SiteAppearance = {
+  themeId: string;
   logoText: string;
   heroImage: string;
   backgroundImage: string;
