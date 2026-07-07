@@ -18,6 +18,10 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   keywords: ["영화", "영화 뉴스", "영화 리뷰", "OTT 추천", "개봉 예정", "CineScope"],
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+  },
   alternates: {
     canonical: "/",
     types: {
