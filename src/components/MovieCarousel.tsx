@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { MovieCard } from "@/components/MovieCard";
 import { MOVIE_CARDS_SETTINGS_KEY, normalizeMovieCards } from "@/lib/movie-cards";
@@ -28,6 +28,8 @@ function getCardsPerPage() {
 }
 
 export function MovieCarousel({ initialMovies }: MovieCarouselProps) {
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
   const [items, setItems] = useState(initialMovies);
   const [page, setPage] = useState(0);
   const [cardsPerPage, setCardsPerPage] = useState(4);
@@ -86,6 +88,31 @@ export function MovieCarousel({ initialMovies }: MovieCarouselProps) {
     setPage((current) => Math.min(Math.max(current + direction, 0), totalPages - 1));
   }
 
+  function handleTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+    const touch = event.touches[0];
+    touchStartXRef.current = touch.clientX;
+    touchStartYRef.current = touch.clientY;
+  }
+
+  function handleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
+    if (touchStartXRef.current === null || touchStartYRef.current === null || totalPages <= 1) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - touchStartXRef.current;
+    const deltaY = touch.clientY - touchStartYRef.current;
+
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+
+    if (Math.abs(deltaX) < 50 || Math.abs(deltaX) < Math.abs(deltaY)) {
+      return;
+    }
+
+    movePage(deltaX < 0 ? 1 : -1);
+  }
+
   return (
     <div className="relative">
       {items.length > cardsPerPage ? (
@@ -114,7 +141,11 @@ export function MovieCarousel({ initialMovies }: MovieCarouselProps) {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+      <div
+        className="grid touch-pan-y grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         {visibleItems.map((movie) => (
           <MovieCard key={movie.id} movie={movie} />
         ))}
