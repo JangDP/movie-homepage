@@ -33,6 +33,7 @@ const adminNav: AdminNavItem[] = [
     label: "꾸미기",
     href: "/admin/appearance",
     children: [
+      { label: "영화 카드", href: "/admin/appearance/movies" },
       { label: "테마", href: "/admin/appearance#theme" },
       { label: "로고/헤더", href: "/admin/appearance#brand" },
       { label: "메인 배너", href: "/admin/banners" },

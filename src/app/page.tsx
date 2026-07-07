@@ -4,7 +4,7 @@ import { AdPlaceholder } from "@/components/AdPlaceholder";
 import { FeaturedArticles } from "@/components/FeaturedArticles";
 import { HeroBanner } from "@/components/HeroBanner";
 import { LatestArticles } from "@/components/LatestArticles";
-import { MovieCard } from "@/components/MovieCard";
+import { MovieCarousel } from "@/components/MovieCarousel";
 import { SectionHeader } from "@/components/SectionHeader";
 import { movies } from "@/data/movies";
 import { siteConfig } from "@/data/site-config";
@@ -53,11 +53,7 @@ export default async function HomePage() {
               description="극장, OTT, 영화제에서 눈여겨볼 작품을 카드 형태로 정리했습니다."
               href="/recommendations"
             />
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              {movies.map((movie) => (
-                <MovieCard key={movie.id} movie={movie} />
-              ))}
-            </div>
+            <MovieCarousel initialMovies={movies} />
           </div>
         </section>
       ) : null}

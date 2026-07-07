@@ -1,5 +1,6 @@
 import Image from "next/image";
 
+import { siteConfig } from "@/data/site-config";
 import type { Movie } from "@/types/site";
 
 type MovieCardProps = {
@@ -7,12 +8,14 @@ type MovieCardProps = {
 };
 
 export function MovieCard({ movie }: MovieCardProps) {
+  const posterSrc = movie.poster || siteConfig.appearance.heroImage;
+
   return (
     <article className="group overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950">
       <div className="relative aspect-[2/3] overflow-hidden bg-zinc-900">
         <Image
-          src={movie.poster}
-          alt={movie.posterAlt}
+          src={posterSrc}
+          alt={movie.posterAlt || movie.title}
           fill
           sizes="(max-width: 768px) 45vw, 20vw"
           className="object-cover transition duration-500 group-hover:scale-105"
