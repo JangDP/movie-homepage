@@ -115,7 +115,7 @@ export function AdminLoginForm() {
             <p className="text-sm font-bold uppercase tracking-[0.18em] text-red-500">
               관리자 로그인
             </p>
-            <h1 className="mt-3 text-2xl font-black text-white">CineScope CMS</h1>
+            <h1 className="mt-3 text-2xl font-black text-white">시네마틱 유니버스 CMS</h1>
             <p className="mt-2 text-sm leading-6 text-zinc-500">
               Supabase Auth 관리자 계정으로 로그인하면 미디어 업로드와 콘텐츠 관리를 사용할 수 있습니다.
             </p>

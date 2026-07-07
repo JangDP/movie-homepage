@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
-  keywords: ["영화", "영화 뉴스", "영화 리뷰", "OTT 추천", "개봉 예정", "CineScope"],
+  keywords: ["영화", "영화 뉴스", "영화 리뷰", "OTT 추천", "개봉 예정", "시네마틱 유니버스"],
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

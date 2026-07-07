@@ -128,7 +128,7 @@ export function AdminCommentsManager() {
       .insert({
         post_id: comment.post_id,
         parent_id: comment.id,
-        author_name: "CineScope 관리자",
+        author_name: "시네마틱 유니버스 관리자",
         body,
         is_admin_reply: true,
         is_deleted: false,

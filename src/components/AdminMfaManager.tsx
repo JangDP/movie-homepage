@@ -80,7 +80,7 @@ export function AdminMfaManager() {
 
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: "totp",
-        friendlyName: "CineScope CMS",
+        friendlyName: "시네마틱 유니버스 CMS",
       });
 
       if (!mounted) {

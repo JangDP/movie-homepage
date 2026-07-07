@@ -1,8 +1,8 @@
 import type { SiteConfig } from "@/types/site";
 
 export const siteConfig: SiteConfig = {
-  name: "CineScope Magazine",
-  logoText: "CineScope",
+  name: "시네마틱 유니버스",
+  logoText: "시네마틱 유니버스",
   url: "https://wkdemvnfworld.com",
   description:
     "영화 뉴스, 리뷰, 관람 가이드, OTT 추천을 다루는 다크톤 영화 전문 매거진입니다.",
@@ -76,7 +76,7 @@ export const siteConfig: SiteConfig = {
     imageAlt: "어두운 영화관 좌석과 스크린",
   },
   appearance: {
-    logoText: "CineScope",
+    logoText: "시네마틱 유니버스",
     heroImage:
       "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1800&q=80",
     backgroundImage:
@@ -89,7 +89,7 @@ export const siteConfig: SiteConfig = {
       latest: true,
       categories: true,
     },
-    footerText: "CineScope는 영화를 좋아하는 독자를 위한 뉴스, 리뷰, 추천 중심의 매거진입니다.",
+    footerText: "시네마틱 유니버스는 영화를 좋아하는 독자를 위한 뉴스, 리뷰, 추천 중심의 매거진입니다.",
   },
   socialLinks: [
     { label: "Instagram", href: "https://instagram.com" },
@@ -98,8 +98,8 @@ export const siteConfig: SiteConfig = {
   ],
   footer: {
     description:
-      "CineScope는 영화를 좋아하는 독자를 위한 뉴스, 리뷰, 추천 중심의 매거진입니다.",
-    copyright: "© 2026 CineScope Magazine. All rights reserved.",
+      "시네마틱 유니버스는 영화를 좋아하는 독자를 위한 뉴스, 리뷰, 추천 중심의 매거진입니다.",
+    copyright: "© 2026 시네마틱 유니버스. All rights reserved.",
     links: [
       { label: "소개", href: "/about" },
       { label: "문의", href: "/contact" },

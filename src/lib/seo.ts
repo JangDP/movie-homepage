@@ -28,7 +28,7 @@ export function getPostDescription(post: Post) {
 }
 
 export function getPostKeywords(post: Post, categoryLabel?: string) {
-  return getSeoKeywords([post.title, categoryLabel, post.category, post.tags, "영화", "리뷰", "CineScope"]);
+  return getSeoKeywords([post.title, categoryLabel, post.category, post.tags, "영화", "리뷰", "시네마틱 유니버스"]);
 }
 
 export function createWebsiteJsonLd() {

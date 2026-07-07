@@ -15,7 +15,7 @@ export function createCategoryMetadata(categoryId: ContentCategory): Metadata {
   return {
     title: category?.label,
     description: category?.description,
-    keywords: getSeoKeywords([category?.label, category?.description, "영화", "CineScope"]),
+    keywords: getSeoKeywords([category?.label, category?.description, "영화", "시네마틱 유니버스"]),
     alternates: {
       canonical: category?.href ?? `/${categoryId}`,
     },
@@ -76,7 +76,7 @@ export function createDynamicCategoryMetadata(categoryId: ContentCategory): Meta
   return {
     title: label,
     description,
-    keywords: getSeoKeywords([label, description, "영화", "CineScope"]),
+    keywords: getSeoKeywords([label, description, "영화", "시네마틱 유니버스"]),
     alternates: {
       canonical: href,
     },

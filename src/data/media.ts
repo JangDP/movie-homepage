@@ -39,7 +39,7 @@ export const mediaAssets: CmsMediaAsset[] = [
   },
   {
     id: "media-logo",
-    title: "CineScope 로고용 배경",
+    title: "시네마틱 유니버스 로고용 배경",
     url: "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?auto=format&fit=crop&w=1200&q=80",
     alt: "영화 필름과 붉은 조명",
     type: "image",
