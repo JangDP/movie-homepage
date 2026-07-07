@@ -26,6 +26,8 @@ type PostDetailClientProps = {
   slug: string;
 };
 
+const postListPageSizeOptions = [5, 10, 20];
+
 const emptyReactionCounts: ReactionCounts = {
   like: 0,
   watched: 0,
@@ -79,8 +81,175 @@ function countReactions(rows: Array<{ reaction_type: ReactionType }>) {
   );
 }
 
+function formatPostDate(value: string) {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function PostListOverview({
+  currentPostId,
+  posts,
+  total,
+  page,
+  pageSize,
+  open,
+  loading,
+  onToggle,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  currentPostId: string;
+  posts: Article[];
+  total: number;
+  page: number;
+  pageSize: number;
+  open: boolean;
+  loading: boolean;
+  onToggle: () => void;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const pages = Array.from({ length: Math.min(totalPages, 10) }, (_, index) => index + 1);
+
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="rounded-lg border border-zinc-800 bg-black/50 p-4 shadow-2xl shadow-black/20">
+        <div className="flex flex-col gap-3 border-b border-zinc-800 pb-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-zinc-400">
+            <span className="font-black text-white">전체보기</span>{" "}
+            <span className="text-zinc-500">{total.toLocaleString("ko-KR")}개의 글</span>
+          </div>
+          <button
+            type="button"
+            onClick={onToggle}
+            className="self-start text-xs font-bold text-zinc-500 transition hover:text-red-400 sm:self-auto"
+          >
+            {open ? "목록닫기" : "목록열기"}
+          </button>
+        </div>
+
+        {open ? (
+          <>
+            <div className="hidden grid-cols-[minmax(0,1fr)_100px_120px] border-b border-zinc-800 py-2 text-xs font-bold text-zinc-500 md:grid">
+              <span>글 제목</span>
+              <span className="text-right">조회수</span>
+              <span className="text-right">작성일</span>
+            </div>
+
+            <div className="divide-y divide-zinc-900">
+              {loading ? (
+                <p className="py-6 text-center text-sm text-zinc-500">글 목록을 불러오는 중입니다.</p>
+              ) : posts.length > 0 ? (
+                posts.map((item) => {
+                  const active = item.id === currentPostId;
+
+                  return (
+                    <Link
+                      key={item.id}
+                      href={`/${item.category}/${item.slug}`}
+                      className={`grid gap-2 py-3 text-sm transition md:grid-cols-[minmax(0,1fr)_100px_120px] md:items-center ${
+                        active ? "text-red-200" : "text-zinc-300 hover:text-white"
+                      }`}
+                    >
+                      <span className="min-w-0">
+                        <span className="line-clamp-1 font-medium">{item.title}</span>
+                        {active ? (
+                          <span className="mt-1 inline-flex rounded bg-red-700 px-2 py-0.5 text-[10px] font-black text-white">
+                            현재 글
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="text-xs text-zinc-500 md:text-right">
+                        <span className="md:hidden">조회수 </span>
+                        {(item.viewCount ?? 0).toLocaleString("ko-KR")}
+                      </span>
+                      <span className="text-xs text-zinc-500 md:text-right">
+                        <span className="md:hidden">작성일 </span>
+                        {formatPostDate(item.publishedAt)}
+                      </span>
+                    </Link>
+                  );
+                })
+              ) : (
+                <p className="py-6 text-center text-sm text-zinc-500">표시할 글이 없습니다.</p>
+              )}
+            </div>
+
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <select
+                value={pageSize}
+                onChange={(event) => onPageSizeChange(Number(event.target.value))}
+                className="h-9 rounded border border-zinc-800 bg-black px-3 text-xs font-bold text-zinc-300 outline-none focus:border-red-700"
+              >
+                {postListPageSizeOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}줄 보기
+                  </option>
+                ))}
+              </select>
+
+              <div className="flex flex-wrap items-center justify-center gap-1 text-xs">
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => onPageChange(page - 1)}
+                  className="min-h-8 rounded border border-zinc-800 px-3 font-bold text-zinc-400 disabled:cursor-not-allowed disabled:opacity-40 hover:border-red-700 hover:text-white"
+                >
+                  이전
+                </button>
+                {pages.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => onPageChange(item)}
+                    className={`size-8 rounded border font-bold ${
+                      item === page
+                        ? "border-red-700 bg-red-700 text-white"
+                        : "border-zinc-800 text-zinc-400 hover:border-red-700 hover:text-white"
+                    }`}
+                  >
+                    {item}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  disabled={page >= totalPages}
+                  onClick={() => onPageChange(page + 1)}
+                  className="min-h-8 rounded border border-zinc-800 px-3 font-bold text-zinc-400 disabled:cursor-not-allowed disabled:opacity-40 hover:border-red-700 hover:text-white"
+                >
+                  다음
+                </button>
+              </div>
+            </div>
+          </>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 export function PostDetailClient({ category, slug }: PostDetailClientProps) {
   const [post, setPost] = useState<Article | null>(null);
+  const [postList, setPostList] = useState<Article[]>([]);
+  const [postListTotal, setPostListTotal] = useState(0);
+  const [postListPage, setPostListPage] = useState(1);
+  const [postListPageSize, setPostListPageSize] = useState(5);
+  const [postListOpen, setPostListOpen] = useState(true);
+  const [postListLoading, setPostListLoading] = useState(false);
   const [relatedPosts, setRelatedPosts] = useState<Article[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [reactionCounts, setReactionCounts] = useState<ReactionCounts>(emptyReactionCounts);
@@ -176,6 +345,50 @@ export function PostDetailClient({ category, slug }: PostDetailClientProps) {
     };
   }, [category, slug]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadPostList() {
+      if (!supabase) {
+        return;
+      }
+
+      setPostListLoading(true);
+
+      const from = (postListPage - 1) * postListPageSize;
+      const to = from + postListPageSize - 1;
+      const { data, error, count } = await supabase
+        .from("posts")
+        .select("*", { count: "exact" })
+        .eq("status", "published")
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (error) {
+        console.error("[post list overview]", error.message);
+        setPostList([]);
+        setPostListTotal(0);
+        setPostListLoading(false);
+        return;
+      }
+
+      setPostList((data ?? []).map(mapPost));
+      setPostListTotal(count ?? 0);
+      setPostListLoading(false);
+    }
+
+    void loadPostList();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [postListPage, postListPageSize]);
+
   if (isLoading) {
     return (
       <main className="min-h-screen pt-24">
@@ -225,6 +438,21 @@ export function PostDetailClient({ category, slug }: PostDetailClientProps) {
 
   return (
     <main className="min-h-screen pt-16">
+      <PostListOverview
+        currentPostId={post.id}
+        posts={postList}
+        total={postListTotal}
+        page={postListPage}
+        pageSize={postListPageSize}
+        open={postListOpen}
+        loading={postListLoading}
+        onToggle={() => setPostListOpen((value) => !value)}
+        onPageChange={setPostListPage}
+        onPageSizeChange={(nextPageSize) => {
+          setPostListPageSize(nextPageSize);
+          setPostListPage(1);
+        }}
+      />
       <article>
         <header className="relative isolate min-h-[520px] overflow-hidden border-b border-zinc-900">
           {post.image ? (
