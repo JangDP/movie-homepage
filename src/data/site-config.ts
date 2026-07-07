@@ -93,7 +93,7 @@ export const siteConfig: SiteConfig = {
   },
   socialLinks: [
     { label: "Instagram", href: "https://instagram.com" },
-    { label: "YouTube", href: "https://youtube.com" },
+    { label: "YouTube", href: "https://youtube.com/channel/UCMIMdvOpQQ_TzTZwwp2ZN-Q?si=AS6KqxTqHF1bYYBy" },
     { label: "X", href: "https://x.com" },
   ],
   footer: {
