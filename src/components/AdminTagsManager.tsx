@@ -14,7 +14,6 @@ export function AdminTagsManager() {
   const canEdit = canManageTags(adminUser.role);
   const [tags, setTags] = useState<TagRow[]>([]);
   const [name, setName] = useState("");
-  const [order, setOrder] = useState(1);
   const [pending, setPending] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>({ type: "idle", message: "" });
 
@@ -33,10 +32,12 @@ export function AdminTagsManager() {
       return;
     }
 
+    const nextOrder = Math.max(0, ...tags.map((tag) => tag.sort_order ?? 0)) + 1;
+
     setPending(true);
     const { data, error } = await supabase
       .from("tags")
-      .insert({ name: trimmed, slug: tagSlug(trimmed), sort_order: order })
+      .insert({ name: trimmed, slug: tagSlug(trimmed), sort_order: nextOrder })
       .select("*")
       .single();
     setPending(false);
@@ -48,7 +49,6 @@ export function AdminTagsManager() {
 
     setTags((current) => [...current, data].sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999)));
     setName("");
-    setOrder((value) => value + 1);
     setSaveState({ type: "success", message: "태그가 저장되었습니다." });
   }
 
@@ -106,9 +106,8 @@ export function AdminTagsManager() {
           </div>
           {!canEdit ? <span className="rounded bg-yellow-950 px-3 py-1 text-xs font-bold text-yellow-200">읽기 전용</span> : null}
         </div>
-        <div className="mt-5 grid gap-3 md:grid-cols-[1fr_140px_120px]">
+        <div className="mt-5 grid gap-3 md:grid-cols-[1fr_120px]">
           <input value={name} onChange={(event) => setName(event.target.value)} disabled={!canEdit} placeholder="태그 이름" className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700 disabled:opacity-50" />
-          <input type="number" value={order} onChange={(event) => setOrder(Number(event.target.value))} disabled={!canEdit} className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700 disabled:opacity-50" />
           <button type="button" onClick={addTag} disabled={!canEdit || pending} className="rounded bg-red-700 px-4 py-2 text-sm font-bold text-white hover:bg-red-600 disabled:opacity-50">
             {pending ? "저장 중..." : "추가"}
           </button>
@@ -119,9 +118,8 @@ export function AdminTagsManager() {
         <h2 className="text-lg font-black text-white">태그 목록</h2>
         <div className="mt-5 grid gap-3">
           {tags.map((tag) => (
-            <article key={tag.id} className="grid gap-3 rounded border border-zinc-800 bg-zinc-950 p-4 md:grid-cols-[1fr_120px_1fr_90px]">
+            <article key={tag.id} className="grid gap-3 rounded border border-zinc-800 bg-zinc-950 p-4 md:grid-cols-[1fr_1fr_90px]">
               <input value={tag.name} onChange={(event) => updateTag(tag, { name: event.target.value })} disabled={!canEdit} className="rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700 disabled:opacity-60" />
-              <input type="number" value={tag.sort_order ?? 0} onChange={(event) => updateTag(tag, { sort_order: Number(event.target.value) })} disabled={!canEdit} className="rounded border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-red-700 disabled:opacity-60" />
               <p className="self-center break-all text-xs text-zinc-500">/{tag.slug}</p>
               <button type="button" onClick={() => deleteTag(tag)} disabled={!canEdit} className="rounded border border-red-900 px-3 py-2 text-sm font-bold text-red-300 hover:bg-red-950/40 disabled:opacity-50">삭제</button>
             </article>
