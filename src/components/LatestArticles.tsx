@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { ArticleGrid } from "@/components/ArticleGrid";
+import { ArticleViewSwitcher } from "@/components/ArticleViewSwitcher";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/types/database";
 import type { Article } from "@/types/site";
@@ -50,7 +50,7 @@ export function LatestArticles() {
         .eq("status", "published")
         .order("published_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
-        .limit(6);
+        .limit(12);
 
       if (!isMounted) {
         return;
@@ -89,5 +89,5 @@ export function LatestArticles() {
     );
   }
 
-  return <ArticleGrid articles={articles} />;
+  return <ArticleViewSwitcher articles={articles} />;
 }
