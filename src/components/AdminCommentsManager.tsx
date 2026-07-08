@@ -7,7 +7,8 @@ import { supabase } from "@/lib/supabase";
 import { canDeleteComments } from "@/types/admin";
 import type { Database } from "@/types/database";
 
-type CommentRow = Database["public"]["Tables"]["comments"]["Row"];
+type CommentRow = Database["public"]["Functions"]["list_admin_comments"]["Returns"][number];
+type RpcResult = Array<{ ok: boolean; message: string; deleted_id: string | null }>;
 
 type SaveState = {
   type: "idle" | "success" | "error";
@@ -54,10 +55,7 @@ export function AdminCommentsManager() {
     }
 
     supabase
-      .from("comments")
-      .select("*")
-      .eq("is_deleted", false)
-      .order("created_at", { ascending: false })
+      .rpc("list_admin_comments", {})
       .then(({ data, error }) => {
         if (error) {
           setSaveState({ type: "error", message: `댓글 불러오기 실패: ${error.message}` });
@@ -86,19 +84,22 @@ export function AdminCommentsManager() {
     setPendingId(comment.id);
     setSaveState({ type: "idle", message: "" });
 
-    const { error } = await supabase
-      .from("comments")
-      .update({ is_deleted: true })
-      .eq("id", comment.id);
+    const { data, error } = await supabase.rpc("admin_soft_delete_comment", {
+      target_comment_id: comment.id,
+    });
 
     setPendingId(null);
 
-    if (error) {
-      setSaveState({ type: "error", message: `댓글 삭제 실패: ${error.message}` });
+    const results = (data as RpcResult | null) ?? [];
+    const result = results[0];
+
+    if (error || !result?.ok) {
+      setSaveState({ type: "error", message: `댓글 삭제 실패: ${error?.message ?? result?.message ?? "권한을 확인해 주세요."}` });
       return;
     }
 
-    setComments((current) => current.filter((item) => item.id !== comment.id));
+    const deletedIds = new Set(results.map((item) => item.deleted_id).filter(Boolean));
+    setComments((current) => current.filter((item) => !deletedIds.has(item.id) && !deletedIds.has(item.parent_id)));
     setSaveState({ type: "success", message: "댓글이 삭제 처리되었습니다." });
   }
 
@@ -123,28 +124,21 @@ export function AdminCommentsManager() {
     setPendingId(comment.id);
     setSaveState({ type: "idle", message: "" });
 
-    const { data, error } = await supabase
-      .from("comments")
-      .insert({
-        post_id: comment.post_id,
-        parent_id: comment.id,
-        author_name: "시네마틱 유니버스 관리자",
-        body,
-        is_admin_reply: true,
-        is_deleted: false,
-        status: "approved",
-      })
-      .select("*")
-      .single();
+    const { data, error } = await supabase.rpc("create_admin_comment_reply", {
+      target_parent_id: comment.id,
+      reply_body: body,
+    });
 
     setPendingId(null);
 
-    if (error) {
-      setSaveState({ type: "error", message: `답글 저장 실패: ${error.message}` });
+    const reply = data?.[0];
+
+    if (error || !reply) {
+      setSaveState({ type: "error", message: `답글 저장 실패: ${error?.message ?? "권한을 확인해 주세요."}` });
       return;
     }
 
-    setComments((current) => [data, ...current]);
+    setComments((current) => [reply, ...current]);
     setReplyDrafts((current) => ({ ...current, [comment.id]: "" }));
     setSaveState({ type: "success", message: "관리자 답글이 등록되었습니다." });
   }
@@ -185,6 +179,11 @@ export function AdminCommentsManager() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
                       <span className="font-bold text-zinc-200">{comment.author_name}</span>
+                      {comment.is_secret ? (
+                        <span className="rounded bg-zinc-900 px-2 py-0.5 font-bold text-zinc-200">
+                          🔒 비밀글
+                        </span>
+                      ) : null}
                       <span>{new Date(comment.created_at).toLocaleString("ko-KR")}</span>
                       <span className="rounded bg-zinc-900 px-2 py-0.5 font-bold">
                         {comment.status}
@@ -215,6 +214,11 @@ export function AdminCommentsManager() {
                               <span className="rounded bg-red-700 px-2 py-0.5 font-bold text-white">
                                 관리자 답글
                               </span>
+                              {reply.is_secret ? (
+                                <span className="rounded bg-zinc-900 px-2 py-0.5 font-bold text-zinc-200">
+                                  🔒 비밀글
+                                </span>
+                              ) : null}
                               <span className="font-bold text-zinc-200">{reply.author_name}</span>
                               <span>{new Date(reply.created_at).toLocaleString("ko-KR")}</span>
                             </div>

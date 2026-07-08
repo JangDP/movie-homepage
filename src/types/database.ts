@@ -92,6 +92,8 @@ export type Database = {
           body: string;
           is_admin_reply: boolean | null;
           is_deleted: boolean | null;
+          is_secret: boolean | null;
+          password_hash: string | null;
           status: "pending" | "approved" | "hidden";
           created_at: string;
         };
@@ -102,6 +104,8 @@ export type Database = {
           body: string;
           is_admin_reply?: boolean;
           is_deleted?: boolean;
+          is_secret?: boolean;
+          password_hash?: string | null;
           status?: "pending" | "approved" | "hidden";
         };
         Update: Partial<Database["public"]["Tables"]["comments"]["Row"]>;
@@ -242,6 +246,73 @@ export type Database = {
       increment_post_view: {
         Args: { target_post_id: string };
         Returns: number;
+      };
+      list_public_comments: {
+        Args: { target_post_id: string };
+        Returns: Array<{
+          id: string;
+          post_id: string;
+          parent_id: string | null;
+          author_name: string;
+          body: string | null;
+          is_admin_reply: boolean;
+          is_secret: boolean;
+          status: "pending" | "approved" | "hidden";
+          created_at: string;
+        }>;
+      };
+      create_public_comment: {
+        Args: {
+          target_post_id: string;
+          visitor_name: string;
+          comment_body: string;
+          secret?: boolean;
+          secret_password?: string | null;
+        };
+        Returns: Database["public"]["Functions"]["list_public_comments"]["Returns"];
+      };
+      reveal_secret_comment: {
+        Args: { target_comment_id: string; secret_password: string };
+        Returns: Array<{
+          ok: boolean;
+          message: string;
+          comment_id: string | null;
+          body: string | null;
+        }>;
+      };
+      delete_secret_comment: {
+        Args: { target_comment_id: string; secret_password: string };
+        Returns: Array<{
+          ok: boolean;
+          message: string;
+          deleted_id: string | null;
+        }>;
+      };
+      list_admin_comments: {
+        Args: Record<string, never>;
+        Returns: Array<{
+          id: string;
+          post_id: string;
+          parent_id: string | null;
+          author_name: string;
+          body: string;
+          is_admin_reply: boolean;
+          is_secret: boolean;
+          status: "pending" | "approved" | "hidden";
+          created_at: string;
+        }>;
+      };
+      admin_soft_delete_comment: {
+        Args: { target_comment_id: string };
+        Returns: Array<{
+          ok: boolean;
+          message: string;
+          deleted_id: string | null;
+        }>;
+      };
+      create_admin_comment_reply: {
+        Args: { target_parent_id: string; reply_body: string };
+        Returns: Database["public"]["Functions"]["list_admin_comments"]["Returns"];
       };
     };
     Views: Record<string, never>;

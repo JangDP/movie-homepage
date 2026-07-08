@@ -4,7 +4,7 @@ import type { Category, ContentCategory, NavItem, Post, SiteConfig } from "@/typ
 
 type PostRow = Database["public"]["Tables"]["posts"]["Row"];
 type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
-type CommentRow = Database["public"]["Tables"]["comments"]["Row"];
+type CommentRow = Database["public"]["Functions"]["list_public_comments"]["Returns"][number];
 type ReactionType = Database["public"]["Tables"]["post_reactions"]["Row"]["reaction_type"];
 
 export type Comment = {
@@ -14,6 +14,7 @@ export type Comment = {
   authorName: string;
   body: string;
   isAdminReply: boolean;
+  isSecret: boolean;
   createdAt: string;
 };
 
@@ -147,8 +148,9 @@ function mapComment(row: CommentRow): Comment {
     postId: row.post_id,
     parentId: row.parent_id ?? null,
     authorName: row.author_name,
-    body: row.body,
+    body: row.body ?? "",
     isAdminReply: Boolean(row.is_admin_reply),
+    isSecret: Boolean(row.is_secret),
     createdAt: row.created_at,
   };
 }
@@ -299,15 +301,9 @@ export async function getRelatedPostsFromSupabase(category: ContentCategory, cur
 }
 
 export async function getComments(postId: string): Promise<Comment[]> {
-  const { data, error } = await restGet<CommentRow[]>(
-    `/comments${queryString({
-      select: "*",
-      post_id: `eq.${postId}`,
-      status: "eq.approved",
-      is_deleted: "eq.false",
-      order: "created_at.desc",
-    })}`,
-  );
+  const { data, error } = await restPost<CommentRow[]>("/rpc/list_public_comments", {
+    target_post_id: postId,
+  });
 
   if (error || !data) {
     return [];

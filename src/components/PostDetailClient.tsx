@@ -19,7 +19,7 @@ import type { Database } from "@/types/database";
 import type { Article, ContentCategory } from "@/types/site";
 
 type PostRow = Database["public"]["Tables"]["posts"]["Row"];
-type CommentRow = Database["public"]["Tables"]["comments"]["Row"];
+type CommentRow = Database["public"]["Functions"]["list_public_comments"]["Returns"][number];
 type ReactionType = keyof ReactionCounts;
 
 type PostDetailClientProps = {
@@ -66,8 +66,9 @@ function mapComment(row: CommentRow): Comment {
     postId: row.post_id,
     parentId: row.parent_id ?? null,
     authorName: row.author_name,
-    body: row.body,
+    body: row.body ?? "",
     isAdminReply: Boolean(row.is_admin_reply),
+    isSecret: Boolean(row.is_secret),
     createdAt: row.created_at,
   };
 }
@@ -297,13 +298,9 @@ export function PostDetailClient({ category, slug }: PostDetailClientProps) {
           .neq("id", nextPost.id)
           .order("published_at", { ascending: false, nullsFirst: false })
           .limit(3),
-        supabase
-          .from("comments")
-          .select("*")
-          .eq("post_id", nextPost.id)
-          .eq("status", "approved")
-          .eq("is_deleted", false)
-          .order("created_at", { ascending: false }),
+        supabase.rpc("list_public_comments", {
+          target_post_id: nextPost.id,
+        }),
         supabase
           .from("post_reactions")
           .select("reaction_type")
