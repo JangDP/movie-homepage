@@ -10,7 +10,7 @@ import { getCategory } from "@/lib/content";
 import { formatPostDate, formatRelativeTime } from "@/lib/date-format";
 import type { Article } from "@/types/site";
 
-type ArticleViewMode = "card" | "list" | "compact" | "image";
+type ArticleViewMode = "grid" | "list" | "compact" | "card" | "video";
 
 type ArticleViewSwitcherProps = {
   articles: Article[];
@@ -21,12 +21,14 @@ const storageKey = "cinescope-article-view-mode";
 const viewOptions: Array<{
   value: ArticleViewMode;
   label: string;
-  icon: "grid" | "list" | "compact" | "image";
+  icon: "grid" | "list" | "compact" | "card" | "video";
+  requiresVideo?: boolean;
 }> = [
-  { value: "card", label: "카드형", icon: "grid" },
+  { value: "grid", label: "그리드형", icon: "grid" },
   { value: "list", label: "목록형", icon: "list" },
   { value: "compact", label: "썸네일형", icon: "compact" },
-  { value: "image", label: "이미지형", icon: "image" },
+  { value: "card", label: "카드형", icon: "card" },
+  { value: "video", label: "영상형", icon: "video", requiresVideo: true },
 ];
 
 function ViewIcon({ icon }: { icon: (typeof viewOptions)[number]["icon"] }) {
@@ -51,7 +53,7 @@ function ViewIcon({ icon }: { icon: (typeof viewOptions)[number]["icon"] }) {
     );
   }
 
-  if (icon === "compact") {
+  if (icon === "compact" || icon === "card") {
     return (
       <span className="grid size-5 gap-1" aria-hidden="true">
         <span className="h-2 rounded bg-current" />
@@ -159,16 +161,25 @@ function ImageArticle({ article }: { article: Article }) {
   );
 }
 
+function hasVideo(article: Article) {
+  const body = article.body.toLowerCase();
+
+  return body.includes("youtube.com") || body.includes("youtu.be") || body.includes("<iframe") || body.includes("data-youtube-video");
+}
+
 export function ArticleViewSwitcher({ articles }: ArticleViewSwitcherProps) {
-  const [viewMode, setViewMode] = useState<ArticleViewMode>("card");
+  const videoArticles = articles.filter(hasVideo);
+  const availableOptions = viewOptions.filter((option) => !option.requiresVideo || videoArticles.length > 0);
+  const [viewMode, setViewMode] = useState<ArticleViewMode>("grid");
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(storageKey) as ArticleViewMode | null;
+    const saved = window.localStorage.getItem(storageKey);
+    const normalizedSaved = saved === "video" && videoArticles.length === 0 ? "grid" : saved === "image" ? "grid" : saved;
 
-    if (saved === "card" || saved === "list" || saved === "compact" || saved === "image") {
-      setViewMode(saved);
+    if (normalizedSaved === "grid" || normalizedSaved === "list" || normalizedSaved === "compact" || normalizedSaved === "card" || normalizedSaved === "video") {
+      setViewMode(normalizedSaved);
     }
-  }, []);
+  }, [videoArticles.length]);
 
   function changeViewMode(mode: ArticleViewMode) {
     setViewMode(mode);
@@ -191,7 +202,7 @@ export function ArticleViewSwitcher({ articles }: ArticleViewSwitcherProps) {
           <p className="mt-1 text-xs text-zinc-500">원하는 보기 방식으로 글 목록을 확인하세요.</p>
         </div>
         <div className="flex items-center gap-2" aria-label="글 목록 보기 방식">
-          {viewOptions.map((option) => {
+          {availableOptions.map((option) => {
             const active = viewMode === option.value;
 
             return (
@@ -215,14 +226,6 @@ export function ArticleViewSwitcher({ articles }: ArticleViewSwitcherProps) {
         </div>
       </div>
 
-      {viewMode === "card" ? (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {articles.map((article, index) => (
-            <ArticleCard key={article.id} article={article} priority={index < 2} />
-          ))}
-        </div>
-      ) : null}
-
       {viewMode === "list" ? (
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-4 sm:px-5">
           {articles.map((article) => (
@@ -239,9 +242,25 @@ export function ArticleViewSwitcher({ articles }: ArticleViewSwitcherProps) {
         </div>
       ) : null}
 
-      {viewMode === "image" ? (
+      {viewMode === "grid" ? (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {articles.map((article) => (
+            <ImageArticle key={article.id} article={article} />
+          ))}
+        </div>
+      ) : null}
+
+      {viewMode === "card" ? (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {articles.map((article, index) => (
+            <ArticleCard key={article.id} article={article} priority={index < 2} />
+          ))}
+        </div>
+      ) : null}
+
+      {viewMode === "video" && videoArticles.length > 0 ? (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {videoArticles.map((article) => (
             <ImageArticle key={article.id} article={article} />
           ))}
         </div>
