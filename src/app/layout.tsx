@@ -5,7 +5,6 @@ import { Analytics } from "@/components/Analytics";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { PopupAd } from "@/components/PopupAd";
-import { SidebarMusicPlayer } from "@/components/SidebarMusicPlayer";
 import { siteConfig } from "@/data/site-config";
 import { fetchAppearanceSettings } from "@/lib/appearance";
 import { absoluteUrl, siteUrl } from "@/lib/seo";
@@ -81,7 +80,6 @@ export default async function RootLayout({
         {children}
         <Footer />
         <PopupAd />
-        <SidebarMusicPlayer />
         <Analytics measurementId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
       </body>
     </html>

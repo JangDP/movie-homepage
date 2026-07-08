@@ -37,7 +37,6 @@ const adminNav: AdminNavItem[] = [
       { label: "테마", href: "/admin/appearance#theme" },
       { label: "로고/헤더", href: "/admin/appearance#brand" },
       { label: "메인 배너", href: "/admin/banners" },
-      { label: "사이드바", href: "/admin/appearance/sidebar" },
       { label: "푸터", href: "/admin/appearance#footer" },
     ],
   },
