@@ -21,12 +21,11 @@ const viewOptions: Array<{
   value: ArticleViewMode;
   label: string;
   icon: "grid" | "list" | "compact" | "video";
-  requiresVideo?: boolean;
 }> = [
   { value: "grid", label: "그리드형", icon: "grid" },
   { value: "list", label: "목록형", icon: "list" },
   { value: "compact", label: "썸네일형", icon: "compact" },
-  { value: "video", label: "영상형", icon: "video", requiresVideo: true },
+  { value: "video", label: "영상형", icon: "video" },
 ];
 
 function ViewIcon({ icon }: { icon: (typeof viewOptions)[number]["icon"] }) {
@@ -159,6 +158,25 @@ function ImageArticle({ article }: { article: Article }) {
   );
 }
 
+function VideoArticle({ article }: { article: Article }) {
+  return (
+    <article className="group overflow-hidden rounded-lg border border-zinc-900 bg-zinc-950">
+      <Link href={`/${article.category}/${article.slug}`} className="block">
+        <div className="relative aspect-video overflow-hidden bg-zinc-900">
+          <ArticleThumb article={article} sizes="(max-width: 640px) 50vw, 25vw" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+          <span className="absolute left-1/2 top-1/2 inline-flex size-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-red-700 text-white shadow-xl shadow-black/40 transition group-hover:scale-110">
+            <span className="ml-1 h-0 w-0 border-y-[8px] border-l-[12px] border-y-transparent border-l-white" />
+          </span>
+          <h3 className="absolute inset-x-0 bottom-0 line-clamp-2 p-3 text-sm font-black leading-snug text-white">
+            {article.title}
+          </h3>
+        </div>
+      </Link>
+    </article>
+  );
+}
+
 function hasVideo(article: Article) {
   const body = article.body.toLowerCase();
 
@@ -167,22 +185,16 @@ function hasVideo(article: Article) {
 
 export function ArticleViewSwitcher({ articles }: ArticleViewSwitcherProps) {
   const videoArticles = articles.filter(hasVideo);
-  const availableOptions = viewOptions.filter((option) => !option.requiresVideo || videoArticles.length > 0);
   const [viewMode, setViewMode] = useState<ArticleViewMode>("grid");
 
   useEffect(() => {
     const saved = window.localStorage.getItem(storageKey);
-    const normalizedSaved =
-      saved === "video" && videoArticles.length === 0
-        ? "grid"
-        : saved === "image" || saved === "card"
-          ? "grid"
-          : saved;
+    const normalizedSaved = saved === "image" || saved === "card" ? "grid" : saved;
 
     if (normalizedSaved === "grid" || normalizedSaved === "list" || normalizedSaved === "compact" || normalizedSaved === "video") {
       setViewMode(normalizedSaved);
     }
-  }, [videoArticles.length]);
+  }, []);
 
   function changeViewMode(mode: ArticleViewMode) {
     setViewMode(mode);
@@ -205,7 +217,7 @@ export function ArticleViewSwitcher({ articles }: ArticleViewSwitcherProps) {
           <p className="mt-1 text-xs text-zinc-500">원하는 보기 방식으로 글 목록을 확인하세요.</p>
         </div>
         <div className="flex items-center gap-2" aria-label="글 목록 보기 방식">
-          {availableOptions.map((option) => {
+          {viewOptions.map((option) => {
             const active = viewMode === option.value;
 
             return (
@@ -253,12 +265,18 @@ export function ArticleViewSwitcher({ articles }: ArticleViewSwitcherProps) {
         </div>
       ) : null}
 
-      {viewMode === "video" && videoArticles.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-          {videoArticles.map((article) => (
-            <ImageArticle key={article.id} article={article} />
-          ))}
-        </div>
+      {viewMode === "video" ? (
+        videoArticles.length > 0 ? (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {videoArticles.map((article) => (
+              <VideoArticle key={article.id} article={article} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-8 text-center text-sm text-zinc-500">
+            아직 영상이 포함된 글이 없습니다.
+          </div>
+        )
       ) : null}
     </div>
   );
