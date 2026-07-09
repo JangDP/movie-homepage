@@ -6,7 +6,6 @@ import { useAdminUser } from "@/components/AdminAuthContext";
 import { supabase } from "@/lib/supabase";
 import {
   addDays,
-  calculatePercentChange,
   getDateRange,
   getKoreaDateKey,
   type VisitorStatsRow,
@@ -37,9 +36,14 @@ function formatNumber(value: number) {
   return value.toLocaleString("ko-KR");
 }
 
-function formatPercent(value: number) {
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(1)}%`;
+function formatDelta(value: number) {
+  if (value === 0) {
+    return "변동 없음";
+  }
+
+  return value > 0
+    ? `${formatNumber(value)}명 증가`
+    : `${formatNumber(Math.abs(value))}명 감소`;
 }
 
 function formatDate(dateKey: string) {
@@ -250,8 +254,8 @@ export function AdminVisitorsDashboard() {
       totalVisitors,
       last7Visitors,
       last30Visitors,
-      dayChange: calculatePercentChange(todayRow.unique_visitors, yesterdayRow.unique_visitors),
-      weekChange: calculatePercentChange(last7Visitors, previous7Visitors),
+      dayDelta: todayRow.unique_visitors - yesterdayRow.unique_visitors,
+      weekDelta: last7Visitors - previous7Visitors,
     };
   }, [rows, today, yesterday]);
 
@@ -300,16 +304,16 @@ export function AdminVisitorsDashboard() {
         <StatCard label="최근 7일 방문자 수" value={formatNumber(stats.last7Visitors)} helper="오늘 포함 7일" />
         <StatCard label="최근 30일 방문자 수" value={formatNumber(stats.last30Visitors)} helper="오늘 포함 30일" />
         <StatCard
-          label="전일 대비"
-          value={formatPercent(stats.dayChange)}
-          helper="오늘 vs 어제"
-          tone={stats.dayChange >= 0 ? "up" : "down"}
+          label="어제보다"
+          value={formatDelta(stats.dayDelta)}
+          helper="오늘 방문자 수 기준"
+          tone={stats.dayDelta >= 0 ? "up" : "down"}
         />
         <StatCard
-          label="전주 대비"
-          value={formatPercent(stats.weekChange)}
-          helper="최근 7일 vs 이전 7일"
-          tone={stats.weekChange >= 0 ? "up" : "down"}
+          label="지난 7일보다"
+          value={formatDelta(stats.weekDelta)}
+          helper="최근 7일과 그 이전 7일 비교"
+          tone={stats.weekDelta >= 0 ? "up" : "down"}
         />
         <StatCard
           label="선택 기간 페이지뷰"

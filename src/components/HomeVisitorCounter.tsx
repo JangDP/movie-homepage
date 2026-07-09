@@ -67,13 +67,13 @@ export function HomeVisitorCounter() {
     <div className="flex flex-wrap gap-3 pt-2">
       <div className="rounded border border-white/10 bg-black/45 px-4 py-3 backdrop-blur">
         <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-500">
-          Today
+          오늘의 방문자 수
         </p>
         <p className="mt-1 text-xl font-black text-white">{formatCount(todayVisitors)}</p>
       </div>
       <div className="rounded border border-white/10 bg-black/45 px-4 py-3 backdrop-blur">
         <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-500">
-          Total
+          총 방문자 수
         </p>
         <p className="mt-1 text-xl font-black text-white">{formatCount(totalVisitors)}</p>
       </div>
