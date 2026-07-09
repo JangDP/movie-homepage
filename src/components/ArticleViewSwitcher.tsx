@@ -4,13 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { ArticleCard } from "@/components/ArticleCard";
 import { siteConfig } from "@/data/site-config";
 import { getCategory } from "@/lib/content";
 import { formatPostDate, formatRelativeTime } from "@/lib/date-format";
 import type { Article } from "@/types/site";
 
-type ArticleViewMode = "grid" | "list" | "compact" | "card" | "video";
+type ArticleViewMode = "grid" | "list" | "compact" | "video";
 
 type ArticleViewSwitcherProps = {
   articles: Article[];
@@ -21,13 +20,12 @@ const storageKey = "cinescope-article-view-mode";
 const viewOptions: Array<{
   value: ArticleViewMode;
   label: string;
-  icon: "grid" | "list" | "compact" | "card" | "video";
+  icon: "grid" | "list" | "compact" | "video";
   requiresVideo?: boolean;
 }> = [
   { value: "grid", label: "그리드형", icon: "grid" },
   { value: "list", label: "목록형", icon: "list" },
   { value: "compact", label: "썸네일형", icon: "compact" },
-  { value: "card", label: "카드형", icon: "card" },
   { value: "video", label: "영상형", icon: "video", requiresVideo: true },
 ];
 
@@ -53,7 +51,7 @@ function ViewIcon({ icon }: { icon: (typeof viewOptions)[number]["icon"] }) {
     );
   }
 
-  if (icon === "compact" || icon === "card") {
+  if (icon === "compact") {
     return (
       <span className="grid size-5 gap-1" aria-hidden="true">
         <span className="h-2 rounded bg-current" />
@@ -174,9 +172,14 @@ export function ArticleViewSwitcher({ articles }: ArticleViewSwitcherProps) {
 
   useEffect(() => {
     const saved = window.localStorage.getItem(storageKey);
-    const normalizedSaved = saved === "video" && videoArticles.length === 0 ? "grid" : saved === "image" ? "grid" : saved;
+    const normalizedSaved =
+      saved === "video" && videoArticles.length === 0
+        ? "grid"
+        : saved === "image" || saved === "card"
+          ? "grid"
+          : saved;
 
-    if (normalizedSaved === "grid" || normalizedSaved === "list" || normalizedSaved === "compact" || normalizedSaved === "card" || normalizedSaved === "video") {
+    if (normalizedSaved === "grid" || normalizedSaved === "list" || normalizedSaved === "compact" || normalizedSaved === "video") {
       setViewMode(normalizedSaved);
     }
   }, [videoArticles.length]);
@@ -246,14 +249,6 @@ export function ArticleViewSwitcher({ articles }: ArticleViewSwitcherProps) {
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {articles.map((article) => (
             <ImageArticle key={article.id} article={article} />
-          ))}
-        </div>
-      ) : null}
-
-      {viewMode === "card" ? (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {articles.map((article, index) => (
-            <ArticleCard key={article.id} article={article} priority={index < 2} />
           ))}
         </div>
       ) : null}

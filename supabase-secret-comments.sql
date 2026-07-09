@@ -1,4 +1,4 @@
-begin;
+﻿begin;
 
 create extension if not exists pgcrypto;
 
@@ -19,7 +19,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
   select exists (
     select 1
@@ -44,7 +44,7 @@ returns table (
 language sql
 stable
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
   select
     c.id,
@@ -83,7 +83,7 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   inserted_comment public.comments%rowtype;
@@ -113,7 +113,7 @@ begin
     false,
     false,
     coalesce(secret, false),
-    case when coalesce(secret, false) then crypt(secret_password, gen_salt('bf')) else null end,
+    case when coalesce(secret, false) then crypt(secret_password, gen_salt('bf'::text)) else null end,
     'approved'
   )
   returning * into inserted_comment;
@@ -144,7 +144,7 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   target_comment public.comments%rowtype;
@@ -208,7 +208,7 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   target_comment public.comments%rowtype;
@@ -275,7 +275,7 @@ returns table (
 language plpgsql
 stable
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 begin
   if not public.is_admin_role(array['super_admin', 'admin', 'editor']) then
@@ -307,7 +307,7 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 begin
   if not public.is_admin_role(array['super_admin', 'admin']) then
@@ -348,7 +348,7 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   parent_comment public.comments%rowtype;
