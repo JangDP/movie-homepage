@@ -163,6 +163,25 @@ export type Database = {
         };
         Update: Partial<Database["public"]["Tables"]["site_visits"]["Row"]>;
       };
+      visitor_stats: {
+        Row: {
+          id: string;
+          date: string;
+          page_views: number;
+          unique_visitors: number;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          date: string;
+          page_views?: number;
+          unique_visitors?: number;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["visitor_stats"]["Row"]>;
+      };
       media_assets: {
         Row: {
           id: string;
@@ -313,6 +332,14 @@ export type Database = {
       create_admin_comment_reply: {
         Args: { target_parent_id: string; reply_body: string };
         Returns: Database["public"]["Functions"]["list_admin_comments"]["Returns"];
+      };
+      track_site_visit: {
+        Args: {
+          input_visitor_id: string;
+          input_page_path: string;
+          input_visit_date?: string;
+        };
+        Returns: Database["public"]["Tables"]["visitor_stats"]["Row"];
       };
     };
     Views: Record<string, never>;

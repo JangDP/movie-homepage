@@ -3,18 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
-import { getVisitorId } from "@/lib/visitor";
-
-function getTodayKey() {
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-
-  return formatter.format(new Date());
-}
+import { getKoreaDateKey } from "@/lib/visitor-stats";
 
 function formatCount(value: number | null) {
   return value === null ? "집계 중" : value.toLocaleString("ko-KR");
@@ -27,64 +16,47 @@ export function HomeVisitorCounter() {
   useEffect(() => {
     let isMounted = true;
 
-    async function trackVisit() {
+    async function loadVisitorCounts() {
       if (!supabase) {
         return;
       }
 
-      const visitorId = getVisitorId();
-      const today = getTodayKey();
-
-      if (!visitorId) {
-        return;
-      }
-
-      const { error: upsertError } = await supabase.from("site_visits").upsert(
-        {
-          visitor_id: visitorId,
-          page_path: "/",
-          visit_date: today,
-        },
-        {
-          onConflict: "visitor_id,page_path,visit_date",
-          ignoreDuplicates: true,
-        },
-      );
-
-      if (upsertError) {
-        console.error("[Supabase:site_visits:upsert]", upsertError.message);
-        return;
-      }
+      const today = getKoreaDateKey();
 
       const [todayResult, totalResult] = await Promise.all([
         supabase
-          .from("site_visits")
-          .select("id", { count: "exact", head: true })
-          .eq("page_path", "/")
-          .eq("visit_date", today),
+          .from("visitor_stats")
+          .select("unique_visitors")
+          .eq("date", today)
+          .maybeSingle(),
         supabase
-          .from("site_visits")
-          .select("visitor_id", { count: "exact", head: true })
-          .eq("page_path", "/"),
+          .from("visitor_stats")
+          .select("unique_visitors")
+          .order("date", { ascending: true }),
       ]);
 
       if (todayResult.error) {
-        console.error("[Supabase:site_visits:today]", todayResult.error.message);
+        console.error("[Supabase:visitor_stats:today]", todayResult.error.message);
         return;
       }
 
       if (totalResult.error) {
-        console.error("[Supabase:site_visits:total]", totalResult.error.message);
+        console.error("[Supabase:visitor_stats:total]", totalResult.error.message);
         return;
       }
 
+      const total = (totalResult.data ?? []).reduce(
+        (sum, row) => sum + Number(row.unique_visitors ?? 0),
+        0,
+      );
+
       if (isMounted) {
-        setTodayVisitors(todayResult.count ?? 0);
-        setTotalVisitors(totalResult.count ?? 0);
+        setTodayVisitors(Number(todayResult.data?.unique_visitors ?? 0));
+        setTotalVisitors(total);
       }
     }
 
-    void trackVisit();
+    void loadVisitorCounts();
 
     return () => {
       isMounted = false;

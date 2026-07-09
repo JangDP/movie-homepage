@@ -40,3 +40,7 @@ export function canManageSpellCheckRules(role: AdminRole) {
 export function canManageAppearance(role: AdminRole) {
   return role === "super_admin" || role === "admin";
 }
+
+export function canViewVisitorStats(role: AdminRole) {
+  return role === "super_admin" || role === "admin";
+}

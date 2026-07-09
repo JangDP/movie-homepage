@@ -5,6 +5,7 @@ import { Analytics } from "@/components/Analytics";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { PopupAd } from "@/components/PopupAd";
+import { VisitorTracker } from "@/components/VisitorTracker";
 import { siteConfig } from "@/data/site-config";
 import { fetchAppearanceSettings } from "@/lib/appearance";
 import { absoluteUrl, siteUrl } from "@/lib/seo";
@@ -77,6 +78,7 @@ export default async function RootLayout({
     <html lang="ko">
       <body style={bodyStyle}>
         <Header />
+        <VisitorTracker />
         {children}
         <Footer />
         <PopupAd />
